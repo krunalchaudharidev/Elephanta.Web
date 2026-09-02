@@ -1,12 +1,19 @@
 import { Outlet } from 'react-router-dom'
-import { loadAuth, clearAuth } from '../services/api'
+import { loadAuth, clearAuth, logout } from '../services/authapi'
 
 export default function AdminLayout() {
   const auth = loadAuth()
 
-  function signOut() {
-    clearAuth()
-    window.location.href = '/admin/login'
+  async function signOut() {
+    const auth = loadAuth()
+    try {
+      if (auth?.refreshToken) await logout(auth.refreshToken)
+    } catch (e) {
+      // ignore logout errors, still clear local auth
+    } finally {
+      clearAuth()
+      window.location.href = '/admin/login'
+    }
   }
 
   return (

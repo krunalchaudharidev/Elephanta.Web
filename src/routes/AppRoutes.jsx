@@ -7,20 +7,55 @@ import StoreLogin from '../pages/store/Login'
 import StoreHome from '../pages/store/Home'
 import StoreProducts from '../pages/store/Products'
 import StoreCart from '../pages/store/Cart'
-import { loadAuth } from '../services/api'
+import { loadAuth, clearAuth, refreshToken, saveAuth } from '../services/authapi'
+import { useEffect, useState } from 'react'
 
 function RequireAdmin({ children }) {
-  const auth = loadAuth()
+  const [ready, setReady] = useState(false)
   const navigate = useNavigate()
-  if (!auth) {
-    navigate('/admin/login', { replace: true })
-    return null
-  }
-  const roles = auth?.user?.roles || []
-  if (!roles.includes('Admin')) {
-    navigate('/admin/login', { replace: true })
-    return null
-  }
+
+  useEffect(() => {
+    let mounted = true
+    async function check() {
+      const auth = loadAuth()
+      if (!auth) {
+        navigate('/admin/login', { replace: true })
+        return
+      }
+
+      // check expiry
+      if (auth?.expiresAt) {
+        const exp = new Date(auth.expiresAt)
+        if (!isNaN(exp) && exp <= new Date()) {
+          // attempt refresh
+          try {
+            const newAuth = await refreshToken(auth.refreshToken)
+            saveAuth(newAuth)
+            if (mounted) setReady(true)
+            return
+          } catch (e) {
+            clearAuth()
+            navigate('/admin/login', { replace: true })
+            return
+          }
+        }
+      }
+
+      const roles = auth?.user?.roles || []
+      if (!roles.includes('Admin')) {
+        clearAuth()
+        navigate('/admin/login', { replace: true })
+        return
+      }
+
+      if (mounted) setReady(true)
+    }
+
+    check()
+    return () => { mounted = false }
+  }, [navigate])
+
+  if (!ready) return null
   return children ? children : <Outlet />
 }
 
