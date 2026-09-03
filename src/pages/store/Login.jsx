@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login as apiLogin, saveAuth } from '../../services/authapi'
-import '../../login.css'
+import '../../styles/login.css'
 
 export default function StoreLogin() {
   const [email, setEmail] = useState('')
