@@ -56,6 +56,10 @@
 .admin-content { padding:20px; background: #f7f8fb; flex:1 }
 .admin-footer { text-align:center; padding:16px; color:var(--text); font-size:13px }
 
+/* Tighten spacing between labels and inputs for admin forms */
+.card .form label { margin-bottom: 6px; }
+.card .form input { margin-top: 6px; }
+
 /* Responsive: collapse to overlay drawer on small screens */
 @media (max-width: 900px) {
   .admin-sidebar { position:fixed; left:0; top:0; bottom:0; transform: translateX(-110%); width:260px }

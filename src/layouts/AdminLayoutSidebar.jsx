@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 
 const items = [
-  ['/', 'Dashboard', 'M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z'],
+  ['/admin/dashboard', 'Dashboard', 'M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z'],
   ['/admin/products', 'Products', 'M3 7h18M6 21h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'],
   ['/admin/categories', 'Categories', 'M4 6h16M4 12h16M4 18h16'],
   ['/admin/orders', 'Orders', 'M3 7h18M6 7v14a2 2 0 002 2h8a2 2 0 002-2V7'],
