@@ -4,6 +4,7 @@ import StoreLayout from '../layouts/StoreLayout'
 import AdminLogin from '../pages/admin/AdminLogin'
 import AdminDashboard from '../pages/admin/Dashboard'
 import AdminProfile from '../pages/admin/Profile'
+import AdminCategories from '../pages/admin/Categories'
 import StoreLogin from '../pages/store/Login'
 import StoreHome from '../pages/store/Home'
 import StoreProducts from '../pages/store/Products'
@@ -77,6 +78,7 @@ export default function AppRoutes() {
         <Route path="/admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
           <Route index element={<Navigate to="/admin/profile" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="categories" element={<AdminCategories />} />
           <Route path="profile" element={<AdminProfile />} />
         </Route>
 

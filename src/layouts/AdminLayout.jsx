@@ -3,6 +3,7 @@ import { loadAuth, clearAuth, logout } from '../services/authapi'
 import Sidebar from './AdminLayoutSidebar'
 import Header from './AdminLayoutHeader'
 import { useState } from 'react'
+import ToastContainer from '../pages/admin/component/Toast'
 
 export default function AdminLayout() {
   const auth = loadAuth()
@@ -54,6 +55,8 @@ export default function AdminLayout() {
             <Outlet />
           </div>
         </main>
+
+        <ToastContainer />
 
         <footer className="flex h-15 shrink-0 items-center justify-center border-t border-gray-200 bg-white px-5">
           <p className="text-sm text-gray-500">© {new Date().getFullYear()} <span className="font-medium text-gray-600">Elephanta</span> — Admin panel</p>
