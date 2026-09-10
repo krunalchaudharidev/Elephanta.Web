@@ -17,6 +17,11 @@ export default function AdminLayoutHeader({ onToggleSidebar, collapsed, onSignOu
   }
 
   const pageTitle = titleFromPath(location.pathname)
+  const initials = (username || '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(s => s[0].toUpperCase())
+    .join('')
 
   return (
     <header className="flex h-[75px] shrink-0 items-center justify-between border-b border-gray-200 bg-white px-5 lg:px-8">
@@ -36,7 +41,7 @@ export default function AdminLayoutHeader({ onToggleSidebar, collapsed, onSignOu
 
       <div className="relative">
         <button onClick={()=>setOpen(v=>!v)} className="flex items-center rounded-xl px-2 py-1.5 transition hover:bg-gray-50">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white shadow-sm">EA</div>
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white shadow-sm">{initials || 'EA'}</div>
 
           <div className="ml-3 hidden text-left sm:block">
             <p className="text-[16px] font-semibold leading-tight text-gray-900">{username}</p>
