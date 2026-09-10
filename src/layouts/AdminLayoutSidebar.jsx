@@ -16,42 +16,47 @@ const items = [
 export default function AdminLayoutSidebar({ collapsed, onCollapseToggle, onSignOut, mobileOpen, onMobileClose }) {
   const loc = useLocation()
 
+  const widthClass = collapsed ? 'w-20' : 'w-[306px]'
+
   return (
-    <aside className={["admin-sidebar", collapsed ? 'collapsed' : '', mobileOpen ? 'open' : ''].join(' ')} aria-label="Primary navigation">
-      <div className="sidebar-inner">
-        <div className="sidebar-top">
-          <Link to="/admin" className="brand-link" onClick={onMobileClose}>
-            <div className="logo-sm" aria-hidden>
-              <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="48" rx="10" fill="var(--accent)" opacity="0.08"/><path d="M8 18c0-6 5-9 10-9s10 3 10 9v5H8v-5z" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </div>
-            {!collapsed && <div className="brand-text"><div className="app">Elephanta</div><div className="role">Admin</div></div>}
-          </Link>
+    <aside id="sidebar" className={`fixed inset-y-0 left-0 z-50 flex ${widthClass} flex-col border-r border-gray-200 bg-white transition-transform duration-300 lg:static lg:translate-x-0 ${mobileOpen ? '' : '-translate-x-full lg:translate-x-0'}`} aria-label="Primary navigation">
 
-          
+      <div className="flex h-[85px] items-center border-b border-gray-100 px-5">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100">
+            <svg className="h-5 w-5 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M5 18V9a7 7 0 0 1 14 0v9"/><path d="M5 18h14"/><path d="M8 18v-7a4 4 0 0 1 8 0v7"/></svg>
+          </div>
         </div>
 
-        <nav className="nav-list">
-          {items.map(([to, label, pathD]) => {
-            const active = loc.pathname === to || (!collapsed && loc.pathname.startsWith(to) && to !== '/')
-            return (
-              <Link key={to} to={to} className={["nav-item", active ? 'active' : ''].join(' ')} onClick={onMobileClose}>
-                <span className="nav-icon" aria-hidden>
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d={pathD}></path></svg>
-                </span>
-                {!collapsed && <span className="nav-label">{label}</span>}
-              </Link>
-            )
-          })}
-        </nav>
-
-        <div className="sidebar-footer">
-          <button className="logout" onClick={onSignOut}>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
-            {!collapsed && <span className="nav-label">Logout</span>}
-          </button>
+        <div className={`ml-4 ${collapsed ? 'hidden' : ''}`}>
+          <h1 className="text-[17px] font-semibold leading-tight text-gray-900">Elephanta</h1>
+          <p className="mt-0.5 text-sm text-gray-500">Admin</p>
         </div>
+
+        <button onClick={onMobileClose} className="ml-auto rounded-lg p-2 text-gray-500 hover:bg-gray-100 lg:hidden">
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
       </div>
-      <div className="sidebar-backdrop" onClick={onMobileClose} />
+
+      <nav className="flex-1 overflow-y-auto px-3 py-5">
+        {items.map(([to, label, pathD]) => {
+          const active = loc.pathname === to
+          return (
+            <Link key={to} to={to} onClick={onMobileClose} className={`group mb-1 flex h-11 items-center rounded-lg px-3 ${active ? 'bg-indigo-50 text-indigo-600' : 'text-gray-600 hover:bg-gray-50 hover:text-indigo-600'} ${collapsed ? 'justify-center' : ''}`}>
+              <svg className={`${collapsed ? '' : 'mr-4'} h-5 w-5`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d={pathD} strokeWidth="1.8"/></svg>
+              <span className={`${collapsed ? 'hidden' : 'text-[16px]'}`}>{label}</span>
+            </Link>
+          )
+        })}
+      </nav>
+
+      <div className="border-t border-gray-200 p-3">
+        <button className={`group flex h-12 w-full items-center rounded-lg px-3 text-gray-600 transition hover:bg-red-50 hover:text-red-600 ${collapsed ? 'justify-center' : ''}`} onClick={onSignOut}>
+          <svg className={`${collapsed ? '' : 'mr-4'} h-5 w-5`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5H5a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h4" strokeWidth="1.8" strokeLinecap="round"/><path d="M13 8l4 4-4 4M17 12H9" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <span className={`${collapsed ? 'hidden' : 'text-[16px]'}`}>Logout</span>
+        </button>
+      </div>
+
     </aside>
   )
 }

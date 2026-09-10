@@ -1,18 +1,30 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login as apiLogin, saveAuth } from '../../services/authapi'
-import '../../styles/login.css'
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [remember, setRemember] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
   const navigate = useNavigate()
 
   async function submit(e) {
     e.preventDefault()
     setError(null)
+    setFieldErrors({})
+    // client-side validation
+    const errs = {}
+    if (!email || !email.trim()) errs.email = 'Email is required.'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Enter a valid email address.'
+    if (!password) errs.password = 'Password is required.'
+    if (Object.keys(errs).length) {
+      setFieldErrors(errs)
+      return
+    }
     setLoading(true)
     try {
       const body = await apiLogin(email, password)
@@ -37,48 +49,78 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="login-page">
-      <div className="card login-card" role="main" aria-labelledby="elephanta-signin">
-        <div className="logo-row">
-          <svg className="logo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <defs>
-              <linearGradient id="g1" x1="0" x2="1">
-                <stop offset="0" stopColor="var(--accent)" />
-                <stop offset="1" stopColor="#6f7bff" />
-              </linearGradient>
-            </defs>
-            <rect x="0" y="0" width="64" height="64" rx="12" fill="url(#g1)" opacity="0.08" />
-            <g transform="translate(8,12) scale(0.7)" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 26c0-9 8-14 16-14 8 0 16 5 16 14v8H6v-8z" />
-              <path d="M28 24c3 0 5-2 5-5s-2-5-5-5" />
-              <circle cx="16" cy="20" r="1.5" fill="var(--accent)" stroke="none" />
-            </g>
-          </svg>
-          <div className="brand">
-            <div className="app-name">Elephanta</div>
-            <div className="app-sub">Admin</div>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+              <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center">
+                <span className="text-white text-2xl font-bold">E</span>
+              </div>
+            </div>
+
+            <h1 className="text-2xl font-bold text-gray-800">Elephanta</h1>
+            <p className="text-gray-500 text-sm mt-1">Admin Panel</p>
           </div>
+
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-800">Welcome Back</h2>
+            <p className="text-sm text-gray-500 mt-1">Sign in to your admin account</p>
+          </div>
+
+          <form onSubmit={submit} method="POST" className="space-y-5">
+
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">Username</label>
+
+              <input
+                type="text"
+                id="username"
+                name="username"
+                placeholder="Enter your username"
+                autoComplete="username"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              />
+              {fieldErrors.email && <div className="text-red-600 text-sm mt-2">{fieldErrors.email}</div>}
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                name="password"
+                placeholder="Enter your password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              />
+            </div>
+
+            {error && <div className="text-red-600 font-semibold">{error}</div>}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-60"
+            >
+              {loading ? 'Logging in…' : 'Login'}
+            </button>
+
+          </form>
+
         </div>
 
-        <h2 id="elephanta-signin">Sign in to your admin account</h2>
+        <p className="text-center text-sm text-gray-500 mt-6">© 2026 Elephanta. All rights reserved.</p>
 
-        <form onSubmit={submit} className="form" noValidate>
-          <label htmlFor="email">
-            Email Address
-            <input id="email" name="email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required />
-          </label>
-
-          <label htmlFor="password">
-            Password
-            <input id="password" name="password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" required />
-          </label>
-
-          {error && <div className="error" role="alert">{error}</div>}
-
-          <button className="submit" type="submit" disabled={loading}>{loading ? 'Logging in…' : 'Login'}</button>
-        </form>
-
-        <div className="hint muted">Your credentials are secured. Use an Admin account to continue.</div>
       </div>
     </div>
   )
