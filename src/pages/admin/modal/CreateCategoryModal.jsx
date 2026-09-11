@@ -96,7 +96,7 @@ export default function CreateCategoryModal({ open, onClose, onCreated }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/50" />
       <form onSubmit={handleSubmit} className="relative z-10 w-full max-w-2xl bg-white rounded-lg shadow-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Add Category</h3>

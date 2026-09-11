@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getCategories } from '../../services/productapi'
+import { useLoading } from '../../contexts/LoadingContext'
 import CreateCategoryModal from './modal/CreateCategoryModal'
 import EditCategoryModal from './modal/EditCategoryModal'
 import DeleteConfirm from './component/DeleteConfirm'
@@ -10,9 +11,9 @@ import { deleteCategory } from '../../services/productapi'
 export default function AdminCategories() {
   const [items, setItems] = useState([])
   const [pageNumber, setPageNumber] = useState(1)
-  const [pageSize] = useState(12)
+  const [pageSize, setPageSize] = useState(10)
   const [totalCount, setTotalCount] = useState(0)
-  const [loading, setLoading] = useState(false)
+  const { isLoading, setLoading: setLoadingContext } = useLoading()
   const [error, setError] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
@@ -20,9 +21,10 @@ export default function AdminCategories() {
   const [showDelete, setShowDelete] = useState(false)
   const [deleting, setDeleting] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  
 
   async function loadData(pg = pageNumber) {
-    setLoading(true)
+    try { setLoadingContext?.(true) } catch {}
     setError(null)
     try {
       const res = await getCategories(pg, pageSize)
@@ -31,7 +33,7 @@ export default function AdminCategories() {
     } catch (e) {
       setError(e.message || String(e))
     } finally {
-      setLoading(false)
+      try { setLoadingContext?.(false) } catch {}
     }
   }
 
@@ -107,18 +109,6 @@ export default function AdminCategories() {
         <div className="mb-4 text-red-600">Error: {String(error)}</div>
       )}
 
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="animate-pulse p-4 bg-white rounded-lg shadow">
-              <div className="h-40 bg-gray-200 rounded mb-3" />
-              <div className="h-4 bg-gray-200 rounded mb-2 w-3/4" />
-              <div className="h-3 bg-gray-200 rounded w-1/2" />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <>
           <div className="overflow-x-auto bg-white rounded-lg shadow">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -149,7 +139,7 @@ export default function AdminCategories() {
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{c.parentCategoryName || c.ParentCategoryName || '-'}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{c.displayOrder ?? c.DisplayOrder ?? 0}</td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${((c.isActive ?? c.IsActive) ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700')}`}>{(c.isActive ?? c.IsActive) ? 'Active' : 'Inactive'}</span>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${((c.isActive ?? c.IsActive) ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700')}`}>{(c.isActive ?? c.IsActive) ? 'Active' : 'Inactive'}</span>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex text-right justify-end gap-2">
@@ -177,7 +167,24 @@ export default function AdminCategories() {
           </div>
 
           <div className="mt-6 flex items-center justify-between">
-            <div className="text-sm text-gray-600">Showing page {pageNumber} of {totalPages} — {totalCount} items</div>
+            <div className="flex items-center gap-3">
+              <div className="text-sm text-gray-600">Showing page {pageNumber} of {totalPages} — {totalCount} items</div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-500">Per page</label>
+                <select
+                  value={pageSize}
+                  onChange={(e) => { const v = Number(e.target.value); setPageSize(v); setPageNumber(1); }}
+                  className="text-sm px-2 py-1 border rounded bg-white"
+                  aria-label="Items per page"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={30}>30</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
@@ -205,8 +212,6 @@ export default function AdminCategories() {
               >Next</button>
             </div>
           </div>
-        </>
-      )}
 
       <CreateCategoryModal open={showCreate} onClose={() => setShowCreate(false)} onCreated={() => loadData(1)} />
       <EditCategoryModal open={showEdit} onClose={() => setShowEdit(false)} category={editing} onUpdated={() => { setShowEdit(false); loadData(pageNumber) }} />

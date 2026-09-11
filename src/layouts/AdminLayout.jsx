@@ -4,11 +4,14 @@ import Sidebar from './AdminLayoutSidebar'
 import Header from './AdminLayoutHeader'
 import { useState } from 'react'
 import ToastContainer from '../pages/admin/component/Toast'
+import LoadingContext from '../contexts/LoadingContext'
+import Loader from '../components/Loader'
 
 export default function AdminLayout() {
   const auth = loadAuth()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   async function signOut() {
     const auth = loadAuth()
@@ -50,11 +53,19 @@ export default function AdminLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onToggleSidebar={handleToggleSidebar} collapsed={collapsed} onSignOut={signOut} username={auth?.user?.name || auth?.user?.email || 'Admin'} role={auth?.user?.role || 'Administrator'} />
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="px-6 py-8 lg:px-8">
-            <Outlet />
-          </div>
-        </main>
+        <LoadingContext.Provider value={{ isLoading, setLoading: setIsLoading }}>
+          <main className="flex-1 overflow-y-auto relative">
+            <div className="px-6 py-8 lg:px-8">
+              <Outlet />
+            </div>
+
+            {isLoading && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 pointer-events-auto">
+                <Loader size="md" />
+              </div>
+            )}
+          </main>
+        </LoadingContext.Provider>
 
         <ToastContainer />
 
