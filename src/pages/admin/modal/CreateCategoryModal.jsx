@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getCategories, createCategory } from '../../../services/productapi'
 import FileUpload from '../component/FileUpload'
+import ToggleSwitch from '../component/ToggleSwitch'
 import { uploadMedia } from '../../../services/mediaapi'
 
 export default function CreateCategoryModal({ open, onClose, onCreated }) {
@@ -176,8 +177,8 @@ export default function CreateCategoryModal({ open, onClose, onCreated }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <label className="inline-flex items-center gap-2">
-              <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+            <label className="inline-flex items-center gap-3">
+              <ToggleSwitch checked={isActive} onChange={(v) => setIsActive(v)} />
               <span className="text-sm">Active</span>
             </label>
           </div>
