@@ -5,7 +5,7 @@ import Header from './AdminLayoutHeader'
 import { useState } from 'react'
 import ToastContainer from '../pages/admin/component/Toast'
 import LoadingContext from '../contexts/LoadingContext'
-import Loader from '../components/Loader'
+import Loader from '../pages/admin/component/Loader'
 
 export default function AdminLayout() {
   const auth = loadAuth()
