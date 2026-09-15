@@ -5,6 +5,7 @@ import { useLoading } from '../../contexts/LoadingContext'
 import CreateCategoryModal from './modal/CreateCategoryModal'
 import EditCategoryModal from './modal/EditCategoryModal'
 import DeleteConfirm from './component/DeleteConfirm'
+import RemoteImage from './component/RemoteImage'
 import { showToast, ToastTypes } from './component/Toast'
 import { deleteCategory } from '../../services/productapi'
 
@@ -127,11 +128,14 @@ export default function AdminCategories() {
                   <tr key={c.id || c.Id}>
                     <td className="px-4 py-4 whitespace-nowrap w-28">
                       <div className="h-16 w-24 bg-gray-50 flex items-center justify-center overflow-hidden rounded-md">
-                        { (c.imageUrl || c.ImageUrl) ? (
-                          <img src={c.imageUrl || c.ImageUrl} alt={c.name || c.Name} className="object-cover h-full w-full" />
-                        ) : (
-                          <div className="text-gray-400 text-sm">No image</div>
-                        ) }
+                        {(() => {
+                          const imgSrc = c.imageUrl ?? c.ImageUrl ?? ((c.mediaId ?? c.MediaId) ? `/api/Media/${c.mediaId ?? c.MediaId}` : '')
+                          return imgSrc ? (
+                            <RemoteImage src={imgSrc} alt={c.name || c.Name} className="object-cover h-full w-full" />
+                          ) : (
+                            <div className="text-gray-400 text-sm">No image</div>
+                          )
+                        })()}
                       </div>
                     </td>
                     <td className="px-4 py-4 whitespace-normal max-w-xs text-sm text-gray-500">{c.name || c.Name}</td>

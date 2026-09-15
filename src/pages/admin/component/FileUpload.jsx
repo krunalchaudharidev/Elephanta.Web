@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { uploadMedia } from '../../../services/mediaapi'
-import { fetchWithAuth } from '../../../services/api'
+import { fetchMediaBlob } from '../../../services/mediaapi'
 
 export default function FileUpload({
   onUploadComplete = null,
@@ -41,24 +41,17 @@ export default function FileUpload({
         return
       }
 
-      // allow both absolute and relative urls
-      const isMediaApi = previewUrl.startsWith('/api/Media/') || previewUrl.includes('/api/Media/')
-      if (!isMediaApi) {
-        if (remotePreview) { URL.revokeObjectURL(remotePreview); setRemotePreview('') }
-        return
-      }
-
-      try {
-        const res = await fetchWithAuth(previewUrl, { method: 'GET' })
-        if (!res.ok) return
-        const blob = await res.blob()
+        const blob = await fetchMediaBlob(previewUrl)
+        if (!blob) {
+          if (remotePreview) { URL.revokeObjectURL(remotePreview); setRemotePreview('') }
+          // use the original previewUrl (may be absolute public URL)
+          setRemotePreview(previewUrl)
+          return
+        }
         if (cancelled) return
         const url = URL.createObjectURL(blob)
         if (remotePreview) URL.revokeObjectURL(remotePreview)
         setRemotePreview(url)
-      } catch (e) {
-        // ignore
-      }
     }
     loadRemote()
     return () => { cancelled = true; if (remotePreview) { URL.revokeObjectURL(remotePreview); setRemotePreview('') } }

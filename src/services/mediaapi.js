@@ -32,3 +32,19 @@ export async function uploadMedia({ file, moduleType = 'product', isCompress = f
     throw e
   }
 }
+
+// Fetch a protected media endpoint and return a Blob, or null if the URL is not a media API or fetch failed.
+export async function fetchMediaBlob(src) {
+  if (!src) return null
+  const isMediaApi = src.startsWith('/api/Media/') || src.includes('/api/Media/')
+  if (!isMediaApi) return null
+
+  try {
+    const res = await fetchWithAuth(src, { method: 'GET' })
+    if (!res.ok) return null
+    const blob = await res.blob()
+    return blob
+  } catch (e) {
+    return null
+  }
+}
