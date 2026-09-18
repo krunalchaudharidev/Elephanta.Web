@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react'
-import { uploadMedia } from '../../../services/mediaapi'
-import { fetchMediaBlob } from '../../../services/mediaapi'
+import { uploadMedia, fetchMediaBlob, deleteMedia } from '../../../services/mediaapi'
+import DeleteConfirm from './DeleteConfirm'
+import { showToast, ToastTypes } from './Toast'
 
 export default function FileUpload({
   onUploadComplete = null,
@@ -20,6 +21,9 @@ export default function FileUpload({
   const [previewModalSrc, setPreviewModalSrc] = useState('')
   const [previewModalOpen, setPreviewModalOpen] = useState(false)
   const tempPreviewRef = React.useRef('')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   React.useEffect(() => {
     // create object URL for single-file preview and cleanup previous
@@ -124,41 +128,57 @@ export default function FileUpload({
                 src={files.length > 0 ? previewLocal : (remotePreview || previewUrl)}
                 alt={files.length > 0 ? files[0].name : 'preview'}
                 className="max-w-[180px] max-h-[120px] object-cover rounded-md cursor-pointer"
-                onClick={() => inputRef.current && inputRef.current.click()}
-              />
-              <button
-                type="button"
                 onClick={() => {
                   const src = files.length > 0 ? previewLocal : (remotePreview || previewUrl)
                   if (!src) return
                   setPreviewModalSrc(src)
                   setPreviewModalOpen(true)
                 }}
-                className="absolute -top-2 -left-2 bg-white border rounded-full w-6 h-6 flex items-center justify-center text-xs"
-                aria-label="Preview image"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 12s4-7.5 9.5-7.5S21.5 12 21.5 12s-4 7.5-9.5 7.5S2.5 12 2.5 12z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              </button>
-              {files.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    // remove selected file
-                    setFiles([])
-                    onChange?.([])
-                    if (previewLocal) { URL.revokeObjectURL(previewLocal); setPreviewLocal('') }
-                  }}
-                  className="absolute -top-2 -right-2 bg-white border rounded-full w-6 h-6 flex items-center justify-center text-xs"
-                  aria-label="Remove file"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
-                  </svg>
-                </button>
-              )}
+              />
+              {(() => {
+                // determine if current preview is remote (API media)
+                const originalRemoteUrl = previewUrl
+                const remoteUrl = remotePreview || previewUrl
+                const isRemote = !files.length && originalRemoteUrl && String(originalRemoteUrl).includes('/api/Media/')
+                if (files.length > 0) {
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // remove selected file
+                        setFiles([])
+                        onChange?.([])
+                        if (previewLocal) { URL.revokeObjectURL(previewLocal); setPreviewLocal('') }
+                      }}
+                      className="absolute -top-2 -right-2 bg-white border rounded-full w-6 h-6 flex items-center justify-center text-xs z-20"
+                      aria-label="Remove file"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                      </svg>
+                    </button>
+                  )
+                }
+                if (isRemote) {
+                  // show delete for remote single preview
+                  // parse id from original previewUrl (not the blob URL stored in remotePreview)
+                  const m = String(originalRemoteUrl).match(/\/api\/Media\/([^/?]+)/)
+                  const id = m ? m[1] : null
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => { setDeleteTarget({ id, url: originalRemoteUrl }); setShowDeleteConfirm(true) }}
+                      className="absolute -top-2 -right-2 bg-white border rounded-full w-6 h-6 flex items-center justify-center text-xs z-20"
+                      aria-label="Remove file"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3 text-red-600">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" />
+                      </svg>
+                    </button>
+                  )
+                }
+                return null
+              })()}
             </div>
           </div>
         )
@@ -167,41 +187,67 @@ export default function FileUpload({
           <ul className="mt-2 list-none p-0">
             {files.map((f, i) => (
               <li key={i} className="flex gap-2 items-center py-1.5">
-                {f.type.startsWith('image/') ? (
-                  <div className="relative">
-                    <img
-                      src={URL.createObjectURL(f)}
-                      alt={f.name}
-                      className="w-12 h-12 object-cover rounded-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // create temp url and open modal
-                        if (tempPreviewRef.current) {
-                          try { URL.revokeObjectURL(tempPreviewRef.current) } catch {}
-                          tempPreviewRef.current = ''
-                        }
-                        const url = URL.createObjectURL(f)
-                        tempPreviewRef.current = url
-                        setPreviewModalSrc(url)
-                        setPreviewModalOpen(true)
-                      }}
-                      className="absolute -top-1 -right-1 bg-white border rounded-full w-5 h-5 flex items-center justify-center text-[10px]"
-                      aria-label="Preview image"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 12s4-7.5 9.5-7.5S21.5 12 21.5 12s-4 7.5-9.5 7.5S2.5 12 2.5 12z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="w-12 h-12 grid place-items-center bg-gray-100 rounded-sm">{f.name.split('.').pop()}</div>
-                )}
+                {(() => {
+                  // support f being File or remote descriptor (string or object)
+                  const isRemoteFile = typeof f === 'string' || (f && typeof f === 'object' && (f.url || f.id))
+                  if (isRemoteFile) {
+                    const url = typeof f === 'string' ? f : (f.url || '')
+                    return (
+                      <div className="relative">
+                        <img src={url} alt={f.name || 'image'} className="w-12 h-12 object-cover rounded-sm cursor-pointer" onClick={() => {
+                          if (tempPreviewRef.current) { try { URL.revokeObjectURL(tempPreviewRef.current) } catch {} tempPreviewRef.current = '' }
+                          setPreviewModalSrc(url)
+                          setPreviewModalOpen(true)
+                        }} />
+                        <button type="button" onClick={() => {
+                          // parse id
+                          const m = String(url).match(/\/api\/Media\/([^/?]+)/)
+                          const id = m ? m[1] : (f && f.id)
+                          setDeleteTarget({ id, url })
+                          setShowDeleteConfirm(true)
+                        }} className="absolute -top-1 -right-1 bg-white border rounded-full w-5 h-5 flex items-center justify-center text-[10px] z-20" aria-label="Delete">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3 text-red-600"><path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" /></svg>
+                        </button>
+                      </div>
+                    )
+                  }
+                  if (f.type && f.type.startsWith('image/')) {
+                    return (
+                      <div className="relative">
+                        <img
+                          src={URL.createObjectURL(f)}
+                          alt={f.name}
+                          className="w-12 h-12 object-cover rounded-sm cursor-pointer"
+                          onClick={() => {
+                            if (tempPreviewRef.current) {
+                              try { URL.revokeObjectURL(tempPreviewRef.current) } catch {}
+                              tempPreviewRef.current = ''
+                            }
+                            const url = URL.createObjectURL(f)
+                            tempPreviewRef.current = url
+                            setPreviewModalSrc(url)
+                            setPreviewModalOpen(true)
+                          }}
+                        />
+                        <button type="button" onClick={() => {
+                          // remove local file
+                          const newFiles = files.filter((_, idx) => idx !== i)
+                          setFiles(newFiles)
+                          onChange?.(newFiles)
+                        }} className="absolute -top-1 -right-1 bg-white border rounded-full w-5 h-5 flex items-center justify-center text-[10px] z-20" aria-label="Remove file">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6" /></svg>
+                        </button>
+                      </div>
+                    )
+                  }
+                  // fallback for non-image file entries
+                  return (
+                    <div className="w-12 h-12 grid place-items-center bg-gray-100 rounded-sm">{(f && f.name) ? f.name.split('.').pop() : ''}</div>
+                  )
+                })()}
                 <div className="flex-1">
-                  <div className="text-sm">{f.name}</div>
-                  <div className="text-xs text-gray-500">{(f.size / 1024).toFixed(1)} KB</div>
+                  <div className="text-sm">{typeof f === 'string' ? (f.split('/').pop()) : (f.name || '')}</div>
+                  <div className="text-xs text-gray-500">{f && f.size ? `${(f.size / 1024).toFixed(1)} KB` : ''}</div>
                 </div>
               </li>
             ))}
@@ -225,6 +271,41 @@ export default function FileUpload({
           </div>
         </div>
       )}
+      <DeleteConfirm
+        open={showDeleteConfirm}
+        title="Delete media"
+        message={`This will permanently delete the selected file and its relation. Are you sure you want to continue?`}
+        onClose={() => { setShowDeleteConfirm(false); setDeleteTarget(null) }}
+        onConfirm={async () => {
+          if (!deleteTarget?.id) return
+          setDeleteLoading(true)
+          try {
+            await deleteMedia(deleteTarget.id, moduleType)
+            // remove matching remote item from files if present
+            const newFiles = files.filter((f) => {
+              if (!f) return true
+              const fUrl = typeof f === 'string' ? f : (f.url || '')
+              const fId = f && typeof f === 'object' && f.id ? String(f.id) : null
+              if (fId && String(fId) === String(deleteTarget.id)) return false
+              if (fUrl && String(deleteTarget.url) && fUrl === deleteTarget.url) return false
+              return true
+            })
+            setFiles(newFiles)
+            onChange?.(newFiles)
+              // clear remote preview shown by this component
+              if (!newFiles.length) setRemotePreview('')
+            onUploadComplete?.({ deletedId: deleteTarget.id })
+            showToast(ToastTypes.SUCCESS, 'Media deleted')
+          } catch (e) {
+            showToast(ToastTypes.ERROR, e?.message || String(e))
+          } finally {
+            setDeleteLoading(false)
+            setShowDeleteConfirm(false)
+            setDeleteTarget(null)
+          }
+        }}
+        loading={deleteLoading}
+      />
     </div>
   )
 }

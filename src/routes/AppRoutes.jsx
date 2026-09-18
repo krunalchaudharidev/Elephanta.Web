@@ -5,6 +5,7 @@ import AdminLogin from '../pages/admin/AdminLogin'
 import AdminDashboard from '../pages/admin/Dashboard'
 import AdminProfile from '../pages/admin/Profile'
 import AdminCategories from '../pages/admin/Categories'
+import AdminProducts from '../pages/admin/Products'
 import StoreLogin from '../pages/store/Login'
 import StoreHome from '../pages/store/Home'
 import StoreProducts from '../pages/store/Products'
@@ -79,6 +80,7 @@ export default function AppRoutes() {
           <Route index element={<Navigate to="/admin/profile" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="categories" element={<AdminCategories />} />
+          <Route path="products" element={<AdminProducts />} />
           <Route path="profile" element={<AdminProfile />} />
         </Route>
 

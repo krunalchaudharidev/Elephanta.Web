@@ -127,23 +127,23 @@ export default function CreateCategoryModal({ open, onClose, onCreated }) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium">Name</label>
+            <label className="block text-sm font-medium text-gray-600">Name</label>
             <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
             {errors.name && <div className="text-red-600 text-sm mt-1">{errors.name}</div>}
           </div>
           <div>
-            <label className="block text-sm font-medium">Slug</label>
+            <label className="block text-sm font-medium text-gray-600">Slug</label>
             <input value={slug} onChange={(e) => setSlug(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
             {errors.slug && <div className="text-red-600 text-sm mt-1">{errors.slug}</div>}
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium">Description</label>
+            <label className="block text-sm font-medium text-gray-600">Description</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium">Image</label>
+            <label className="block text-sm font-medium text-gray-600">Image</label>
             <div className="mt-1">
               <FileUpload
                 accept="image/*"
@@ -161,13 +161,13 @@ export default function CreateCategoryModal({ open, onClose, onCreated }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Display Order</label>
+            <label className="block text-sm font-medium text-gray-600">Display Order</label>
             <input type="number" value={displayOrder} onChange={(e) => setDisplayOrder(Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
             {errors.displayOrder && <div className="text-red-600 text-sm mt-1">{errors.displayOrder}</div>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Parent Category</label>
+            <label className="block text-sm font-medium text-gray-600">Parent Category</label>
             <select value={parentCategoryId} onChange={(e) => setParentCategoryId(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2">
               <option value="">— None —</option>
               {parents.map((p) => (

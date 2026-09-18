@@ -48,3 +48,23 @@ export async function fetchMediaBlob(src) {
     return null
   }
 }
+
+export async function deleteMedia(id, moduleType = 'product') {
+  if (!id) throw new Error('id required')
+  const params = new URLSearchParams()
+  if (moduleType) params.append('moduleType', moduleType)
+  try {
+    const res = await fetchWithAuth(`/api/Media/${id}?${params.toString()}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const txt = await res.text()
+      let parsed = txt
+      try { parsed = JSON.parse(txt) } catch {}
+      const msg = parsed?.message ?? parsed?.Message ?? txt
+      throw new Error(msg || `Delete failed: ${res.status}`)
+    }
+    const body = await (res.headers.get('content-type') || '').includes('application/json') ? res.json() : res.text()
+    return body
+  } catch (e) {
+    throw e
+  }
+}

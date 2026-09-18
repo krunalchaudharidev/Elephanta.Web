@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import PageHeader from './component/PageHeader'
 import { loadAuth, BASE } from '../../services/api'
 import { fetchWithAuth } from '../../services/api'
 
@@ -169,20 +170,7 @@ export default function AdminProfile() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-start gap-4">
-          <div>
-            <div className="text-sm text-gray-500 mt-2">
-              <Link to="/admin/dashboard" className="inline-flex items-center gap-2 text-indigo-600 hover:underline">
-                <svg className="h-4 w-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                <span>Dashboard</span>
-              </Link>
-              <span className="mx-2 text-gray-400">/</span>
-              <span>Profile</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageHeader title="Profile" />
 
       <div className="w-full bg-white rounded-xl shadow-sm p-6">
         <div className="mb-4 flex gap-2">

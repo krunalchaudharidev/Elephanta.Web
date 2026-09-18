@@ -6,6 +6,35 @@ export async function getCategories(pageNumber = 1, pageSize = 10) {
 	return apiGet(`/api/Product/categories?${q.toString()}`)
 }
 
+export async function searchProducts({ name, minPrice, maxPrice, categoryId, sort, isActive, pageNumber = 1, pageSize = 10 } = {}) {
+	const q = new URLSearchParams()
+	if (name !== undefined && name !== null && String(name).trim() !== '') q.append('name', String(name))
+	if (minPrice !== undefined && minPrice !== null && String(minPrice).trim() !== '') q.append('minPrice', String(minPrice))
+	if (maxPrice !== undefined && maxPrice !== null && String(maxPrice).trim() !== '') q.append('maxPrice', String(maxPrice))
+	if (categoryId) q.append('categoryId', String(categoryId))
+	if (sort) q.append('sort', String(sort))
+	if (isActive !== undefined && isActive !== null) q.append('isActive', String(isActive))
+	q.append('pageNumber', String(pageNumber))
+	q.append('pageSize', String(pageSize))
+	return apiGet(`/api/Product/products/search?${q.toString()}`)
+}
+
+export async function createProduct(payload) {
+	try {
+		const res = await apiPost('/api/Product/products', payload)
+		const success = res?.isSuccess ?? res?.IsSuccess ?? true
+		if (success) {
+			showToast(ToastTypes.SUCCESS, res?.message || res?.Message || 'Product created successfully.')
+		} else {
+			showToast(ToastTypes.ERROR, res?.message || res?.Message || 'Failed to create product.')
+		}
+		return res
+	} catch (e) {
+		showToast(ToastTypes.ERROR, e.message || 'Failed to create product.')
+		throw e
+	}
+}
+
 export async function createCategory(payload) {
 	try {
 		const res = await apiPost('/api/Product/categories', payload)
@@ -79,6 +108,37 @@ export async function deleteCategory(id) {
 		const success = json?.isSuccess ?? json?.IsSuccess
 		if (success) showToast(ToastTypes.SUCCESS, json?.message || json?.Message || 'Category deleted successfully.')
 		else showToast(ToastTypes.ERROR, json?.message || json?.Message || 'Failed to delete category.')
+		return json
+	} catch (e) {
+		throw e
+	}
+}
+
+export async function deleteProduct(id) {
+	if (!id) throw new Error('id required')
+	try {
+		const res = await fetchWithAuth(`/api/Product/products/${id}`, { method: 'DELETE' })
+		if (res.status === 204) {
+			showToast(ToastTypes.SUCCESS, 'Product deleted successfully.')
+			return null
+		}
+		if (!res.ok) {
+			const txt = await res.text()
+			let apiMsg = txt
+			try {
+				const parsed = JSON.parse(txt)
+				apiMsg = parsed?.message ?? parsed?.Message ?? txt
+			} catch {}
+			const err = new Error(`Delete failed: ${res.status} ${apiMsg}`)
+			err.status = res.status
+			err.body = txt
+			err.apiMessage = apiMsg
+			throw err
+		}
+		const json = await res.json()
+		const success = json?.isSuccess ?? json?.IsSuccess
+		if (success) showToast(ToastTypes.SUCCESS, json?.message || json?.Message || 'Product deleted successfully.')
+		else showToast(ToastTypes.ERROR, json?.message || json?.Message || 'Failed to delete product.')
 		return json
 	} catch (e) {
 		throw e
