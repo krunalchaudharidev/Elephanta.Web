@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { loadAuth, clearAuth, logout } from '../services/authapi'
 import Sidebar from './AdminLayoutSidebar'
 import Header from './AdminLayoutHeader'
+import { PageTitleProvider } from '../contexts/PageTitleContext'
 import { useState } from 'react'
 import ToastContainer from '../pages/admin/component/Toast'
 import LoadingContext from '../contexts/LoadingContext'
@@ -51,21 +52,23 @@ export default function AdminLayout() {
       <div id="sidebarOverlay" onClick={closeMobile} className={`fixed inset-0 z-40 ${mobileOpen ? '' : 'hidden'} bg-black/30 backdrop-blur-[1px] lg:hidden`} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Header onToggleSidebar={handleToggleSidebar} collapsed={collapsed} onSignOut={signOut} username={auth?.user?.name || auth?.user?.email || 'Admin'} role={auth?.user?.role || 'Administrator'} />
+        <PageTitleProvider>
+          <Header onToggleSidebar={handleToggleSidebar} collapsed={collapsed} onSignOut={signOut} username={auth?.user?.name || auth?.user?.email || 'Admin'} role={auth?.user?.role || 'Administrator'} />
 
-        <LoadingContext.Provider value={{ isLoading, setLoading: setIsLoading }}>
-          <main className="flex-1 overflow-y-auto relative">
-            <div className="px-6 py-8 lg:px-8">
-              <Outlet />
-            </div>
-
-            {isLoading && (
-              <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 pointer-events-auto">
-                <Loader size="md" />
+          <LoadingContext.Provider value={{ isLoading, setLoading: setIsLoading }}>
+            <main className="flex-1 overflow-y-auto relative">
+              <div className="px-6 py-8 lg:px-8">
+                <Outlet />
               </div>
-            )}
-          </main>
-        </LoadingContext.Provider>
+
+              {isLoading && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 pointer-events-auto">
+                  <Loader size="md" />
+                </div>
+              )}
+            </main>
+          </LoadingContext.Provider>
+        </PageTitleProvider>
 
         <ToastContainer />
 

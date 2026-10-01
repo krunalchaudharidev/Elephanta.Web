@@ -19,6 +19,11 @@ export async function searchProducts({ name, minPrice, maxPrice, categoryId, sor
 	return apiGet(`/api/Product/products/search?${q.toString()}`)
 }
 
+export async function getProduct(id) {
+	if (!id) throw new Error('id required')
+	return apiGet(`/api/Product/products/${id}`)
+}
+
 export async function createProduct(payload) {
 	try {
 		const res = await apiPost('/api/Product/products', payload)
@@ -110,6 +115,36 @@ export async function deleteCategory(id) {
 		else showToast(ToastTypes.ERROR, json?.message || json?.Message || 'Failed to delete category.')
 		return json
 	} catch (e) {
+		throw e
+	}
+}
+
+export async function updateProduct(id, payload) {
+	if (!id) throw new Error('id required')
+	try {
+		const res = await fetchWithAuth(`/api/Product/products/${id}`, {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(payload),
+		})
+		if (res.status === 204) {
+			showToast(ToastTypes.INFO, 'Product details have been updated.')
+			return null
+		}
+		if (!res.ok) {
+			const txt = await res.text()
+			const err = new Error(`Update failed: ${res.status} ${txt}`)
+			err.status = res.status
+			showToast(ToastTypes.ERROR, err.message)
+			throw err
+		}
+		const json = await res.json()
+		const success = json?.isSuccess ?? json?.IsSuccess
+		if (success) showToast(ToastTypes.INFO, json?.message || json?.Message || 'Product details have been updated.')
+		else showToast(ToastTypes.ERROR, json?.message || json?.Message || 'Failed to update product.')
+		return json
+	} catch (e) {
+		showToast(ToastTypes.ERROR, e.message || 'Failed to update product.')
 		throw e
 	}
 }

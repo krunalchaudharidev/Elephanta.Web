@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import PageHeader from './component/PageHeader'
-import { searchProducts } from '../../services/productapi'
+import { searchProducts, getCategories } from '../../services/productapi'
 import { useLoading } from '../../contexts/LoadingContext'
 import RemoteImage from './component/RemoteImage'
 import CreateProductModal from './modal/CreateProductModal'
@@ -25,12 +25,23 @@ export default function AdminProducts() {
   const [name, setName] = useState('')
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
+  const [categories, setCategories] = useState([])
+  const [categoryId, setCategoryId] = useState('')
+  const [isActive, setIsActive] = useState('')
 
   async function loadData(pg = pageNumber) {
     try { setLoadingContext?.(true) } catch {}
     setError(null)
     try {
-      const res = await searchProducts({ name: name || undefined, minPrice: minPrice ? Number(minPrice) : undefined, maxPrice: maxPrice ? Number(maxPrice) : undefined, pageNumber: pg, pageSize })
+      const res = await searchProducts({
+        name: name || undefined,
+        minPrice: minPrice ? Number(minPrice) : undefined,
+        maxPrice: maxPrice ? Number(maxPrice) : undefined,
+        categoryId: categoryId || undefined,
+        isActive: isActive === '' ? undefined : (isActive === 'true'),
+        pageNumber: pg,
+        pageSize,
+      })
       const list = res?.items || res?.Items || []
       setItems(list)
       setTotalCount(res?.totalCount ?? res?.TotalCount ?? 0)
@@ -42,6 +53,22 @@ export default function AdminProducts() {
   }
 
   useEffect(() => { loadData(1) }, [pageSize])
+
+  useEffect(() => {
+    let mounted = true
+    async function loadCats() {
+      try {
+        const res = await getCategories(1, 1000)
+        if (!mounted) return
+        const items = res?.items || res?.Items || []
+        setCategories(items)
+      } catch (err) {
+        // ignore
+      }
+    }
+    loadCats()
+    return () => { mounted = false }
+  }, [])
 
   function handleSearch(e) {
     e?.preventDefault && e.preventDefault()
@@ -63,10 +90,11 @@ export default function AdminProducts() {
     if (!deleting) return
     setDeleteLoading(true)
     try {
-      await deleteProduct(deleting.id || deleting.Id)
+      const id = deleting.id || deleting.Id
+      await deleteProduct(id)
       setShowDelete(false)
       setDeleting(null)
-      loadData(pageNumber)
+      setItems((prev) => (prev || []).filter((it) => (it.id ?? it.Id) !== id))
     } catch (e) {
       let msg = e?.apiMessage || e?.message || String(e)
       if (!e?.apiMessage) {
@@ -87,7 +115,13 @@ export default function AdminProducts() {
 
   return (
     <div className="w-full">
-      <PageHeader title="Products" />
+      <PageHeader
+        title="Products"
+        breadcrumbs={[
+          { label: 'Dashboard', to: '/admin/dashboard' },
+          { label: 'Products' }
+        ]}
+      />
 
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -104,10 +138,17 @@ export default function AdminProducts() {
       </div>
       <CreateProductModal open={showCreate} onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); loadData(1) }} />
 
-      <form onSubmit={handleSearch} className="mb-6 grid grid-cols-1 sm:grid-cols-4 gap-3">
+      <form onSubmit={handleSearch} className="mb-6 grid grid-cols-1 sm:grid-cols-6 gap-3">
         <div>
           <label className="block text-sm text-gray-600">Name</label>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Search by name" className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-600">Category</label>
+          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2">
+            <option value="">All</option>
+            {categories.map((c) => (<option key={c.id ?? c.Id} value={c.id ?? c.Id}>{c.name ?? c.Name}</option>))}
+          </select>
         </div>
         <div>
           <label className="block text-sm text-gray-600">Min Price</label>
@@ -116,6 +157,14 @@ export default function AdminProducts() {
         <div>
           <label className="block text-sm text-gray-600">Max Price</label>
           <input type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} placeholder="Max" className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-600">Status</label>
+          <select value={isActive} onChange={(e) => setIsActive(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2">
+            <option value="">All</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
         </div>
         <div className="flex items-end gap-2">
           <button type="submit" className="px-4 py-2 rounded bg-indigo-600 text-white">Search</button>

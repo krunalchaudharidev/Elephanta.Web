@@ -7,6 +7,7 @@ import { uploadMedia } from '../../../services/mediaapi'
 export default function CreateCategoryModal({ open, onClose, onCreated }) {
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
+  const [slugTouched, setSlugTouched] = useState(false)
   const [description, setDescription] = useState('')
   const [mediaId, setMediaId] = useState(null)
   const [mediaPath, setMediaPath] = useState('')
@@ -44,6 +45,7 @@ export default function CreateCategoryModal({ open, onClose, onCreated }) {
     if (open) {
       setName('')
       setSlug('')
+      setSlugTouched(false)
       setDescription('')
       setMediaId(null)
       setMediaPath('')
@@ -55,10 +57,22 @@ export default function CreateCategoryModal({ open, onClose, onCreated }) {
     }
   }, [open])
 
+  function slugify(text) {
+    return (text || '')
+      .toString()
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  }
+
   function validate() {
     const e = {}
     if (!name || !name.trim()) e.name = 'Name is required'
     if (!slug || !slug.trim()) e.slug = 'Slug is required'
+    if (!description || !description.trim()) e.description = 'Short Description is required'
     if (displayOrder < 0 || Number.isNaN(Number(displayOrder))) e.displayOrder = 'Must be 0 or greater'
     // mediaId is optional
     setErrors(e)
@@ -127,23 +141,41 @@ export default function CreateCategoryModal({ open, onClose, onCreated }) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-600">Name</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Name<span className="text-red-500"> *</span></label>
+            <input value={name} onChange={(e) => {
+              const v = e.target.value
+              setName(v)
+              if (!slugTouched) setSlug(slugify(v))
+            }} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
             {errors.name && <div className="text-red-600 text-sm mt-1">{errors.name}</div>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-600">Slug</label>
-            <input value={slug} onChange={(e) => setSlug(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Slug<span className="text-red-500"> *</span></label>
+            <div className="relative">
+              <input value={slug} onChange={(e) => { setSlug(e.target.value); setSlugTouched(true) }} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 pr-10 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+              <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400" onClick={() => { navigator.clipboard?.writeText(slug || '') }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <rect x="9" y="9" width="11" height="11" rx="2" />
+                  <path d="M5 15V5a2 2 0 012-2h8" />
+                </svg>
+              </button>
+            </div>
             {errors.slug && <div className="text-red-600 text-sm mt-1">{errors.slug}</div>}
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-600">Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
+            <div className="mb-1.5 flex justify-between">
+              <label className="block text-sm font-medium text-slate-700">Short Description<span className="text-red-500"> *</span></label>
+
+              <span className="text-xs text-slate-400">{(description || '').length} / 200</span>
+            </div>
+
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} maxLength={200} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+            {errors.description && <div className="text-red-600 text-sm mt-1">{errors.description}</div>}
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-600">Image</label>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Image</label>
             <div className="mt-1">
               <FileUpload
                 accept="image/*"
@@ -161,14 +193,14 @@ export default function CreateCategoryModal({ open, onClose, onCreated }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-600">Display Order</label>
-            <input type="number" value={displayOrder} onChange={(e) => setDisplayOrder(Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Display Order</label>
+            <input type="number" value={displayOrder} onChange={(e) => setDisplayOrder(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
             {errors.displayOrder && <div className="text-red-600 text-sm mt-1">{errors.displayOrder}</div>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-600">Parent Category</label>
-            <select value={parentCategoryId} onChange={(e) => setParentCategoryId(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Parent Category</label>
+            <select value={parentCategoryId} onChange={(e) => setParentCategoryId(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
               <option value="">— None —</option>
               {parents.map((p) => (
                 <option key={p.id || p.Id} value={p.id || p.Id}>{p.name || p.Name}</option>

@@ -170,7 +170,13 @@ export default function AdminProfile() {
 
   return (
     <div>
-      <PageHeader title="Profile" />
+      <PageHeader
+        title="Profile"
+        breadcrumbs={[
+          { label: 'Dashboard', to: '/admin/dashboard' },
+          { label: 'Profile' }
+        ]}
+      />
 
       <div className="w-full bg-white rounded-xl shadow-sm p-6">
         <div className="mb-4 flex gap-2">

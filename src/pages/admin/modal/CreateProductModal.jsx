@@ -3,10 +3,12 @@ import { createProduct, getCategories } from '../../../services/productapi'
 import FileUpload from '../component/FileUpload'
 import ToggleSwitch from '../component/ToggleSwitch'
 import { uploadMedia } from '../../../services/mediaapi'
+import RichTextEditor from '../component/RichTextEditor'
 
 export default function CreateProductModal({ open, onClose, onCreated }) {
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
+  const [slugTouched, setSlugTouched] = useState(false)
   const [sku, setSku] = useState('')
   const [shortDescription, setShortDescription] = useState('')
   const [description, setDescription] = useState('')
@@ -42,6 +44,7 @@ export default function CreateProductModal({ open, onClose, onCreated }) {
     if (open) {
       setName('')
       setSlug('')
+      setSlugTouched(false)
       setSku('')
       setShortDescription('')
       setDescription('')
@@ -57,11 +60,23 @@ export default function CreateProductModal({ open, onClose, onCreated }) {
     }
   }, [open])
 
+  function slugify(text) {
+    return (text || '')
+      .toString()
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  }
+
   function validate() {
     const e = {}
     if (!name || !name.trim()) e.name = 'Name is required'
     if (!slug || !slug.trim()) e.slug = 'Slug is required'
     if (!sku || !sku.trim()) e.sku = 'SKU is required'
+    if (!shortDescription || !shortDescription.trim()) e.shortDescription = 'Short Description is required'
     if (price === '' || price === null) {
       e.price = 'Price is required'
     } else {
@@ -147,23 +162,37 @@ export default function CreateProductModal({ open, onClose, onCreated }) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-600">Name *</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Name<span className="text-red-500"> *</span></label>
+            <input value={name} onChange={(e) => {
+              const v = e.target.value
+              setName(v)
+              if (!slugTouched) setSlug(slugify(v))
+            }} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
             {errors.name && <div className="text-red-600 text-sm mt-1">{errors.name}</div>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-600">Slug *</label>
-            <input value={slug} onChange={(e) => setSlug(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Slug<span className="text-red-500"> *</span></label>
+            <div className="relative">
+              <input value={slug} onChange={(e) => { setSlug(e.target.value); setSlugTouched(true) }} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 pr-10 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+
+              <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400" onClick={() => { navigator.clipboard?.writeText(slug || '') }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <rect x="9" y="9" width="11" height="11" rx="2" />
+                  <path d="M5 15V5a2 2 0 012-2h8" />
+                </svg>
+              </button>
+
+            </div>
             {errors.slug && <div className="text-red-600 text-sm mt-1">{errors.slug}</div>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-600">SKU *</label>
-            <input value={sku} onChange={(e) => setSku(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">SKU<span className="text-red-500"> *</span></label>
+            <input value={sku} onChange={(e) => setSku(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
             {errors.sku && <div className="text-red-600 text-sm mt-1">{errors.sku}</div>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-600">Category *</label>
+            <label className="block text-sm font-medium text-gray-600">Category<span className="text-red-500"> *</span></label>
             <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2">
               <option value="">— None —</option>
               {categories.map((c) => (<option key={c.id ?? c.Id} value={c.id ?? c.Id}>{c.name ?? c.Name}</option>))}
@@ -172,39 +201,44 @@ export default function CreateProductModal({ open, onClose, onCreated }) {
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-600">Short Description</label>
-            <input value={shortDescription} onChange={(e) => setShortDescription(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
+            <div className="mb-1.5 flex justify-between">
+              <label className="block text-sm font-medium text-slate-700">Short Description<span className="text-red-500"> *</span></label>
+              <span className="text-xs text-slate-400">{(shortDescription || '').length} / 200</span>
+            </div>
+
+            <textarea value={shortDescription} onChange={(e) => setShortDescription(e.target.value)} rows={4} maxLength={200} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+            {errors.shortDescription && <div className="text-red-600 text-sm mt-1">{errors.shortDescription}</div>}
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-600">Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Full Description</label>
+            <div className="mt-1">
+              <RichTextEditor value={description} onChange={(v) => setDescription(v)} minHeight={120} />
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-600">Price *</label>
-            <input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Price<span className="text-red-500"> *</span></label>
+            <input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
             {errors.price && <div className="text-red-600 text-sm mt-1">{errors.price}</div>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-600">Compare At Price</label>
-            <input type="number" step="0.01" value={compareAtPrice} onChange={(e) => setCompareAtPrice(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Compare At Price</label>
+            <input type="number" step="0.01" value={compareAtPrice} onChange={(e) => setCompareAtPrice(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-600">Stock Quantity</label>
-            <input type="number" value={stockQuantity} onChange={(e) => setStockQuantity(Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded px-3 py-2" />
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Stock Quantity</label>
+            <input type="number" value={stockQuantity} onChange={(e) => setStockQuantity(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
             {errors.stockQuantity && <div className="text-red-600 text-sm mt-1">{errors.stockQuantity}</div>}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-6">
             <label className="inline-flex items-center gap-3">
               <ToggleSwitch checked={isActive} onChange={(v) => setIsActive(v)} />
               <span className="text-sm">Active</span>
             </label>
-          </div>
 
-          <div className="flex items-center gap-3">
             <label className="inline-flex items-center gap-3">
               <ToggleSwitch checked={isFeatured} onChange={(v) => setIsFeatured(v)} />
               <span className="text-sm">Featured</span>

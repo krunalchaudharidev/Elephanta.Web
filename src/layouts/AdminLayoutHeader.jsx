@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { usePageTitle } from '../contexts/PageTitleContext'
 
 export default function AdminLayoutHeader({ onToggleSidebar, collapsed, onSignOut, username='Admin', role='Administrator' }) {
   const [open, setOpen] = useState(false)
@@ -16,7 +17,8 @@ export default function AdminLayoutHeader({ onToggleSidebar, collapsed, onSignOu
     return last.split(/[-_]/).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')
   }
 
-  const pageTitle = titleFromPath(location.pathname)
+  const { title: pageTitleCtx } = usePageTitle()
+  const pageTitle = pageTitleCtx ?? titleFromPath(location.pathname)
   const initials = (username || '')
     .split(/\s+/)
     .filter(Boolean)

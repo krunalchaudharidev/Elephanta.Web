@@ -2,9 +2,9 @@ import React from 'react'
 
 export default function ToggleSwitch({ checked = false, onChange = () => {}, disabled = false, size = 'md', className = '' }) {
   const sizes = {
-    sm: { w: 'w-10', h: 'h-6', knob: 'w-4 h-4 translate-x-0.5 translate-y-0.5', knobTranslate: 'translate-x-4' },
-    md: { w: 'w-12', h: 'h-7', knob: 'w-6 h-6 translate-x-0.5 translate-y-0.5', knobTranslate: 'translate-x-5' },
-    lg: { w: 'w-14', h: 'h-8', knob: 'w-7 h-7 translate-x-0.5 translate-y-0.5', knobTranslate: 'translate-x-6' },
+    sm: { w: 'w-10', h: 'h-6', knob: 'w-4 h-4 translate-x-0.5', knobTranslate: 'translate-x-4' },
+    md: { w: 'w-12', h: 'h-7', knob: 'w-6 h-6 translate-x-0.5', knobTranslate: 'translate-x-5' },
+    lg: { w: 'w-14', h: 'h-8', knob: 'w-7 h-7 translate-x-0.5', knobTranslate: 'translate-x-6' },
   }
   const s = sizes[size] || sizes.md
 
@@ -19,7 +19,7 @@ export default function ToggleSwitch({ checked = false, onChange = () => {}, dis
     >
       <span
         aria-hidden="true"
-        className={`absolute left-0 top-0 ${s.knob} bg-white rounded-full shadow transform transition-transform duration-150 ${checked ? s.knobTranslate : ''}`}
+        className={`absolute left-0 top-1/2 -translate-y-1/2 ${s.knob} bg-white rounded-full shadow transform transition-transform duration-150 ${checked ? s.knobTranslate : ''}`}
       />
     </button>
   )

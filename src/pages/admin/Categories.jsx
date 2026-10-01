@@ -72,7 +72,14 @@ export default function AdminCategories() {
 
   return (
     <div className="w-full">
-      <PageHeader title="Categories" right={<div className="" />} />
+      <PageHeader
+        title="Categories"
+        breadcrumbs={[
+          { label: 'Dashboard', to: '/admin/dashboard' },
+          { label: 'Categories' }
+        ]}
+        right={<div className="" />}
+      />
 
       <div className="flex items-center justify-between mb-6">
         <div>
