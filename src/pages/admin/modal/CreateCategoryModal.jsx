@@ -177,19 +177,25 @@ export default function CreateCategoryModal({ open, onClose, onCreated }) {
           <div className="sm:col-span-2">
             <label className="mb-1.5 block text-sm font-medium text-slate-700">Image</label>
             <div className="mt-1">
-              <FileUpload
-                accept="image/*"
-                moduleType="category"
-                previewUrl={mediaPath}
-                onChange={(files) => {
-                  const f = files && files.length ? files[0] : null
-                  setSelectedFile(f)
-                  // clear previous uploaded media until saved
-                  setMediaId(null)
-                  setMediaPath('')
-                }}
-              />
-            </div>
+                <FileUpload
+                  accept="image/*"
+                  moduleType="category"
+                  items={mediaPath ? [{ id: mediaId, url: mediaPath, isPrimary: true }] : null}
+                  onChange={(files) => {
+                    const f = files && files.length ? files[0] : null
+                    setSelectedFile(f)
+                    // clear previous uploaded media until saved
+                    setMediaId(null)
+                    setMediaPath('')
+                  }}
+                  onRemove={() => {
+                    // remove current remote preview
+                    setSelectedFile(null)
+                    setMediaId(null)
+                    setMediaPath('')
+                  }}
+                />
+              </div>
           </div>
 
           <div>

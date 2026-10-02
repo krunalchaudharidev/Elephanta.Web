@@ -195,7 +195,11 @@ export default function AdminProducts() {
               const price = p.price ?? p.Price
               const compareAt = p.compareAtPrice ?? p.CompareAtPrice
               const imageIds = p.imageIds ?? p.ImageIds ?? []
-              const imgSrc = imageIds && imageIds.length ? `/api/Media/${imageIds[0]}` : ''
+              const primaryId = p.primaryImageId ?? p.PrimaryImageId ?? null
+              const chosenId = (imageIds && imageIds.length)
+                ? (primaryId ? (imageIds.find((mid) => String(mid) === String(primaryId)) ?? imageIds[0]) : imageIds[0])
+                : null
+              const imgSrc = chosenId ? `/api/Media/${chosenId}` : ''
               return (
                 <tr key={id}>
                   <td className="px-4 py-4 whitespace-nowrap w-28">

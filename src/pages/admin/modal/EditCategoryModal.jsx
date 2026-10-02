@@ -198,10 +198,15 @@ export default function EditCategoryModal({ open, onClose, category, onUpdated }
               <FileUpload
                 accept="image/*"
                 moduleType="category"
-                previewUrl={mediaPath}
+                items={mediaPath ? [{ id: mediaId, url: mediaPath, isPrimary: true }] : null}
                 onChange={(files) => {
                   const f = files && files.length ? files[0] : null
                   setSelectedFile(f)
+                  setMediaId(null)
+                  setMediaPath('')
+                }}
+                onRemove={() => {
+                  setSelectedFile(null)
                   setMediaId(null)
                   setMediaPath('')
                 }}

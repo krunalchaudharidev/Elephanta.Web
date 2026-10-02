@@ -248,7 +248,21 @@ export default function CreateProductModal({ open, onClose, onCreated }) {
           <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-gray-600">Image</label>
             <div className="mt-1">
-              <FileUpload accept="image/*" moduleType="product" multiple={true} onChange={(files) => setSelectedFiles(files)} />
+              <FileUpload
+                accept="image/*"
+                moduleType="product"
+                multiple={true}
+                onChange={(files) => setSelectedFiles(files)}
+                onRemove={(id) => {
+                  // remove by index when id is numeric (index), otherwise ignore
+                  setSelectedFiles((prev) => {
+                    if (!prev || !prev.length) return []
+                    if (typeof id === 'number') return prev.filter((_, idx) => idx !== id)
+                    // fallback: remove by matching id property if present
+                    return prev.filter((f) => !(f && (f.id === id || f.Id === id)))
+                  })
+                }}
+              />
             </div>
           </div>
         </div>

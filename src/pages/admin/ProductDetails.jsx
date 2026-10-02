@@ -4,8 +4,10 @@ import ToggleSwitch from "./component/ToggleSwitch";
 import RemoteImage from "./component/RemoteImage";
 import { usePageTitle } from "../../contexts/PageTitleContext";
 import { useParams } from 'react-router-dom'
-import { getProduct, getCategories, updateProduct as apiUpdateProduct } from '../../services/productapi'
+import { getProduct, getCategories, updateProduct as apiUpdateProduct, getProductFaqs, createProductFaq, updateProductFaq, deleteProductFaq } from '../../services/productapi'
+import { uploadMedia, deleteMedia } from '../../services/mediaapi'
 import RichTextEditor from './component/RichTextEditor'
+import FileUpload from './component/FileUpload'
 
 // Inline SVG icon components (small, minimal paths)
 const Svg = ({ children, className, viewBox = "0 0 24 24", ...rest }) => (
@@ -218,6 +220,8 @@ const ProductDetails = () => {
   }, [product?.name, setTitle]);
 
   const [images, setImages] = useState([]);
+  const [deletedImageIds, setDeletedImageIds] = useState([]);
+  const [isSavingImages, setIsSavingImages] = useState(false);
 
   const [faqs, setFaqs] = useState([
     {
@@ -322,8 +326,31 @@ const ProductDetails = () => {
         // build images array from ImageIds -> /api/Media/{id}
         const imageIds = res?.imageIds ?? res?.ImageIds ?? []
         if (imageIds && imageIds.length) {
-          const imgs = imageIds.map((mid, idx) => ({ id: mid, url: `/api/Media/${mid}`, isPrimary: idx === 0 }))
+          const primaryId = res?.primaryImageId ?? res?.PrimaryImageId ?? null
+          const imgs = imageIds.map((mid, idx) => ({
+            id: mid,
+            url: `/api/Media/${mid}`,
+            isPrimary: primaryId ? String(mid) === String(primaryId) : idx === 0,
+          }))
           setImages(imgs)
+        }
+
+        // load FAQs for this product
+        try {
+          const faqsRes = await getProductFaqs(pid)
+          if (mounted && faqsRes) {
+            const list = Array.isArray(faqsRes) ? faqsRes : (faqsRes?.items || faqsRes?.Items || [])
+            const mappedFaqs = (list || []).map((f) => ({
+              id: f?.id ?? f?.Id,
+              question: f?.question ?? f?.Question ?? '',
+              answer: f?.answer ?? f?.Answer ?? '',
+              isActive: Boolean(f?.isActive ?? f?.IsActive ?? true),
+              displayOrder: f?.displayOrder ?? f?.DisplayOrder ?? 0,
+            }))
+            setFaqs(mappedFaqs)
+          }
+        } catch (e) {
+          // ignore FAQ load errors
         }
 
       } catch (e) {
@@ -339,11 +366,10 @@ const ProductDetails = () => {
   // IMAGE HANDLING
   // -----------------------------------------
 
-  const handleImageUpload = (event) => {
-    const files = Array.from(event.target.files || []);
-
-    const newImages = files
-      .filter((file) => file.type.startsWith("image/"))
+  const handleImageFiles = (files) => {
+    const list = Array.from(files || []);
+    const newImages = list
+      .filter((file) => file.type && file.type.startsWith("image/"))
       .map((file) => ({
         id: Date.now() + Math.random(),
         url: URL.createObjectURL(file),
@@ -351,13 +377,24 @@ const ProductDetails = () => {
         file,
       }));
 
-    setImages((prev) => [...prev, ...newImages]);
-
-    event.target.value = "";
+    if (newImages.length) setImages((prev) => [...prev, ...newImages]);
   };
 
   const removeImage = (id) => {
-    setImages((prev) => prev.filter((image) => image.id !== id));
+    setImages((prev) => {
+      const found = prev.find((image) => image.id === id);
+      // if this was a remote image (no file property), record and attempt delete
+      if (found && !found.file) {
+        try {
+          setDeletedImageIds((s) => [...s, found.id]);
+          // call deleteMedia but don't block UI
+          deleteMedia(found.id).catch((e) => console.error('Failed to delete media', e));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      return prev.filter((image) => image.id !== id);
+    });
   };
 
   const setPrimaryImage = (id) => {
@@ -380,6 +417,7 @@ const ProductDetails = () => {
       ...prev,
       {
         id: Date.now(),
+        isNew: true,
         question: "",
         answer: "",
         isActive: true,
@@ -402,8 +440,18 @@ const ProductDetails = () => {
   };
 
   const removeFaq = (id) => {
-    setFaqs((prev) => prev.filter((faq) => faq.id !== id));
+    setFaqs((prev) => {
+      const found = prev.find((f) => f.id === id)
+      if (found && !found.isNew) {
+        try {
+          setDeletedFaqIds((s) => [...s, found.id])
+        } catch (e) {}
+      }
+      return prev.filter((faq) => faq.id !== id)
+    })
   };
+
+  const [deletedFaqIds, setDeletedFaqIds] = useState([])
 
   // -----------------------------------------
   // SAVE HANDLERS
@@ -462,13 +510,65 @@ const ProductDetails = () => {
       return
     }
 
-    const payload = {
-      faqs,
+    // validate required fields (question + answer)
+    const invalid = faqs.find((f) => !(String(f.question || '').trim() && String(f.answer || '').trim()))
+    if (invalid) {
+      alert('Question and Answer are required for all FAQs.')
+      return
     }
 
     try {
-      await apiUpdateProduct(id, payload)
-      // keep local faqs state as-is
+      // perform deletions
+      if (deletedFaqIds && deletedFaqIds.length) {
+        await Promise.all(deletedFaqIds.map((fid) => deleteProductFaq(fid).catch((e) => console.error('delete faq failed', e))))
+      }
+
+      // create new FAQs
+      const toCreate = faqs.filter((f) => f.isNew)
+      if (toCreate.length) {
+        await Promise.all(
+          toCreate.map((f) =>
+            createProductFaq(id, {
+              question: f.question,
+              answer: f.answer,
+              isActive: Boolean(f.isActive),
+              displayOrder: f.displayOrder ?? 0,
+            }).catch((e) => console.error('create faq failed', e))
+          )
+        )
+      }
+
+      // update existing FAQs (send for all non-new entries)
+      const toUpdate = faqs.filter((f) => !f.isNew)
+      if (toUpdate.length) {
+        await Promise.all(
+          toUpdate.map((f) =>
+            updateProductFaq(f.id, {
+              question: f.question,
+              answer: f.answer,
+              isActive: Boolean(f.isActive),
+              displayOrder: f.displayOrder ?? 0,
+            }).catch((e) => console.error('update faq failed', e))
+          )
+        )
+      }
+
+      // refresh faqs from server
+      try {
+        const fresh = await getProductFaqs(id)
+        const list = Array.isArray(fresh) ? fresh : (fresh?.items || fresh?.Items || [])
+        const mappedFaqs = (list || []).map((f) => ({
+          id: f?.id ?? f?.Id,
+          question: f?.question ?? f?.Question ?? '',
+          answer: f?.answer ?? f?.Answer ?? '',
+          isActive: Boolean(f?.isActive ?? f?.IsActive ?? true),
+          displayOrder: f?.displayOrder ?? f?.DisplayOrder ?? 0,
+        }))
+        setFaqs(mappedFaqs)
+        setDeletedFaqIds([])
+      } catch (e) {
+        // ignore
+      }
     } catch (e) {
       alert(e?.message || 'Failed to save FAQs')
     }
@@ -513,6 +613,71 @@ const ProductDetails = () => {
       setIsActive(Boolean(payload.isActive))
     } catch (e) {
       alert(e?.message || 'Failed to save inventory')
+    }
+  }
+
+  const handleSaveImages = async () => {
+    const id = product?.id ?? routeId
+    if (!id) {
+      alert('Product id is required to update.')
+      return
+    }
+
+    setIsSavingImages(true)
+    try {
+      // upload local files
+      const localImages = images.filter((img) => img.file)
+      const uploadResults = await Promise.all(
+        localImages.map((img) =>
+          uploadMedia({ file: img.file, moduleType: 'product' })
+            .then((res) => ({ tempId: img.id, res }))
+            .catch((err) => ({ tempId: img.id, err }))
+        )
+      )
+
+      const tempToId = {}
+      uploadResults.forEach((r) => {
+        const body = r.res
+        if (!body || r.err) return
+        const idVal = body?.id ?? body?.Id ?? body?.mediaId ?? body?.MediaId ?? body?.imageId ?? body?.ImageId ?? null
+        if (idVal) tempToId[r.tempId] = idVal
+      })
+
+      // determine ordered image ids (primary first, then original order)
+      const imgsWithIdx = images.map((img, idx) => ({ ...img, idx }))
+      imgsWithIdx.sort((a, b) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0) || a.idx - b.idx)
+
+      const imageIds = imgsWithIdx
+        .map((img) => {
+          if (img.file) return tempToId[img.id] ?? null
+          return img.id
+        })
+        .filter((x) => x)
+
+      // determine primary image id (prefer explicit isPrimary, fallback to first)
+      const primaryImg = imgsWithIdx.find((img) => img.isPrimary) ?? imgsWithIdx[0]
+      let primaryId = null
+      if (primaryImg) {
+        if (primaryImg.file) primaryId = tempToId[primaryImg.id] ?? null
+        else primaryId = primaryImg.id
+      }
+
+      // send PrimaryImageId (and imageIds) to updateProduct
+      await apiUpdateProduct(id, { PrimaryImageId: primaryId, imageIds })
+
+      // refresh images state to remote urls
+      setImages(
+        imageIds.map((mid, idx) => ({
+          id: mid,
+          url: `/api/Media/${mid}`,
+          isPrimary: primaryId ? String(mid) === String(primaryId) : idx === 0,
+        }))
+      )
+      setDeletedImageIds([])
+    } catch (e) {
+      alert(e?.message || 'Failed to save images')
+    } finally {
+      setIsSavingImages(false)
     }
   }
 
@@ -773,67 +938,20 @@ const ProductDetails = () => {
 
                       </div>
 
-                      <input id="image-upload" type="file" multiple accept=".jpg,.jpeg,.png" onChange={handleImageUpload} className="hidden" />
 
                     </div>
 
+                    {/* Upload - unified FileUpload component */}
 
-                    {/* Upload */}
+                    <div className="mt-2">
+                      <FileUpload accept=".jpg,.jpeg,.png" multiple={true} onChange={(files) => handleImageFiles(files)} items={images} onRemove={(id) => removeImage(id)} onSetPrimary={(id) => setPrimaryImage(id)} />
+                    </div>
 
-                    <label htmlFor="image-upload" className="block cursor-pointer rounded-xl border-2 border-dashed border-slate-300 p-8 text-center transition hover:border-blue-400 hover:bg-blue-50/30">
-
-                      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50">
-
-                        <UploadCloud className="h-6 w-6 text-blue-600" />
-
-                      </div>
-
-                      <p className="text-sm font-medium text-slate-700">Drag & drop images here</p>
-
-                      <p className="mt-1 text-xs text-slate-500">or click to browse</p>
-
-                      <p className="mt-3 text-xs text-slate-400">JPG, PNG, JPEG · Maximum 5MB per image</p>
-
-                    </label>
-
-
-                    {/* Image Grid */}
-
-                    <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-
-                      {images.map((image) => (
-
-                        <div key={image.id} className="group relative">
-
-                          <div className={`aspect-square overflow-hidden rounded-xl bg-slate-100 ${image.isPrimary ? "border-2 border-blue-500" : "border border-slate-200"}`}>
-
-                            {image.url ? (
-                              <RemoteImage src={image.url} alt={product.name} className="object-cover h-full w-full" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-gray-400 text-sm">No image</div>
-                            )}
-
-                          </div>
-
-
-                          {image.isPrimary && (
-                            <span className="absolute left-2 top-2 rounded-md bg-blue-600 px-2 py-1 text-xs font-semibold text-white">Primary</span>
-                          )}
-
-
-                          {!image.isPrimary && (
-                            <button onClick={() => setPrimaryImage(image.id)} className="absolute bottom-2 left-2 rounded-md bg-white px-2 py-1 text-xs font-medium opacity-0 shadow transition group-hover:opacity-100">Set Primary</button>
-                          )}
-
-
-                          <button onClick={() => removeImage(image.id)} className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white text-red-500 opacity-0 shadow transition hover:text-red-700 group-hover:opacity-100">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-
-                        </div>
-
-                      ))}
-
+                    <div className="mt-5 flex justify-end">
+                      <button type="button" disabled={isSavingImages} onClick={handleSaveImages} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+                        <Save className="h-4 w-4" />
+                        {isSavingImages ? 'Saving...' : 'Save Changes'}
+                      </button>
                     </div>
 
                   </div>

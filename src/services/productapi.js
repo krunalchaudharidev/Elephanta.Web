@@ -24,6 +24,90 @@ export async function getProduct(id) {
 	return apiGet(`/api/Product/products/${id}`)
 }
 
+export async function getProductFaqs(productId) {
+	if (!productId) throw new Error('productId required')
+	return apiGet(`/api/Product/products/${productId}/faqs`)
+}
+
+export async function createProductFaq(productId, payload) {
+	if (!productId) throw new Error('productId required')
+	try {
+		const res = await fetchWithAuth(`/api/Product/products/${productId}/faqs`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(payload),
+		})
+		if (!res.ok) {
+			const txt = await res.text()
+			const err = new Error(`Create FAQ failed: ${res.status} ${txt}`)
+			err.status = res.status
+			showToast(ToastTypes.ERROR, err.message)
+			throw err
+		}
+		const json = await res.json()
+		const success = json?.isSuccess ?? json?.IsSuccess ?? true
+		if (success) showToast(ToastTypes.SUCCESS, json?.message || json?.Message || 'FAQ added successfully.')
+		else showToast(ToastTypes.ERROR, json?.message || json?.Message || 'Failed to add FAQ.')
+		return json
+	} catch (e) {
+		showToast(ToastTypes.ERROR, e.message || 'Failed to add FAQ.')
+		throw e
+	}
+}
+
+export async function updateProductFaq(id, payload) {
+ 	if (!id) throw new Error('id required')
+ 	try {
+ 		const res = await fetchWithAuth(`/api/Product/products/faqs/${id}`, {
+ 			method: 'PUT',
+ 			headers: { 'Content-Type': 'application/json' },
+ 			body: JSON.stringify(payload),
+ 		})
+ 		if (!res.ok) {
+ 			const txt = await res.text()
+ 			const err = new Error(`Update FAQ failed: ${res.status} ${txt}`)
+ 			err.status = res.status
+ 			showToast(ToastTypes.ERROR, err.message)
+ 			throw err
+ 		}
+ 		const json = await res.json()
+ 		const success = json?.isSuccess ?? json?.IsSuccess
+ 		if (success) showToast(ToastTypes.INFO, json?.message || json?.Message || 'FAQ updated successfully.')
+ 		else showToast(ToastTypes.ERROR, json?.message || json?.Message || 'Failed to update FAQ.')
+ 		return json
+ 	} catch (e) {
+ 		showToast(ToastTypes.ERROR, e.message || 'Failed to update FAQ.')
+ 		throw e
+ 	}
+}
+
+export async function deleteProductFaq(id) {
+ 	if (!id) throw new Error('id required')
+ 	try {
+ 		const res = await fetchWithAuth(`/api/Product/products/faqs/${id}`, { method: 'DELETE' })
+ 		if (!res.ok) {
+ 			const txt = await res.text()
+ 			let apiMsg = txt
+ 			try {
+ 				const parsed = JSON.parse(txt)
+ 				apiMsg = parsed?.message ?? parsed?.Message ?? txt
+ 			} catch {}
+ 			const err = new Error(`Delete FAQ failed: ${res.status} ${apiMsg}`)
+ 			err.status = res.status
+ 			err.body = txt
+ 			err.apiMessage = apiMsg
+ 			throw err
+ 		}
+ 		const json = await res.json()
+ 		const success = json?.isSuccess ?? json?.IsSuccess
+ 		if (success) showToast(ToastTypes.SUCCESS, json?.message || json?.Message || 'FAQ deleted successfully.')
+ 		else showToast(ToastTypes.ERROR, json?.message || json?.Message || 'Failed to delete FAQ.')
+ 		return json
+ 	} catch (e) {
+ 		throw e
+ 	}
+}
+
 export async function createProduct(payload) {
 	try {
 		const res = await apiPost('/api/Product/products', payload)
