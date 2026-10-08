@@ -7,6 +7,8 @@ import AdminProfile from '../pages/admin/Profile'
 import AdminCategories from '../pages/admin/Categories'
 import AdminProducts from '../pages/admin/Products'
 import ProductDetails from '../pages/admin/ProductDetails'
+import AdminOffers from '../pages/admin/Offers'
+import OfferDetails from '../pages/admin/OfferDetails'
 import StoreLogin from '../pages/store/Login'
 import StoreHome from '../pages/store/Home'
 import StoreProducts from '../pages/store/Products'
@@ -83,6 +85,8 @@ export default function AppRoutes() {
           <Route path="categories" element={<AdminCategories />} />
           <Route path="products" element={<AdminProducts />} />
           <Route path="products/:id" element={<ProductDetails />} />
+          <Route path="offers" element={<AdminOffers />} />
+          <Route path="offers/:id" element={<OfferDetails />} />
           <Route path="profile" element={<AdminProfile />} />
         </Route>
 
