@@ -60,8 +60,7 @@ export default function AdminLayoutHeader({ onToggleSidebar, collapsed, onSignOu
               <p className="text-xs text-gray-500">{role}</p>
             </div>
 
-            <Link to="/admin/profile" className="flex items-center px-4 py-3 text-sm text-gray-600 hover:bg-gray-50">Profile</Link>
-            <Link to="/admin/settings" className="flex items-center px-4 py-3 text-sm text-gray-600 hover:bg-gray-50">Account Settings</Link>
+            <Link to="/admin/account-settings" className="flex items-center px-4 py-3 text-sm text-gray-600 hover:bg-gray-50">Account Settings</Link>
 
             <button className="w-full border-t border-gray-100 px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50" onClick={onSignOut}>Logout</button>
           </div>

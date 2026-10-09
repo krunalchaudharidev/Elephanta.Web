@@ -4,7 +4,7 @@ import PageHeader from './component/PageHeader'
 import { loadAuth, BASE } from '../../services/api'
 import { fetchWithAuth } from '../../services/api'
 
-export default function AdminProfile() {
+export default function AccountSettings() {
   const auth = loadAuth()
   const user = auth?.user || {}
 
@@ -48,8 +48,6 @@ export default function AdminProfile() {
     async function load() {
       setLoadingUser(true)
       try {
-        // Use a single-shot fetch with the current access token to avoid triggering
-        // the global refresh/clearAuth logic in fetchWithAuth which can redirect.
         const authLocal = loadAuth()
         if (authLocal?.accessToken) {
           const r = await fetch(`${BASE}/api/User/me`, { headers: { Authorization: `Bearer ${authLocal.accessToken}` } })
@@ -125,7 +123,6 @@ export default function AdminProfile() {
     if (!newPassword) e.newPassword = 'New password is required.'
     if (!confirmPassword) e.confirmPassword = 'Confirm password is required.'
     if (newPassword && confirmPassword && newPassword !== confirmPassword) e.confirmPassword = 'Passwords do not match.'
-    // Example policy: min 8 chars, at least one number and letter (adapt if backend requires stricter)
     if (newPassword && !/(?=.{8,})(?=.*[A-Za-z])(?=.*\d)/.test(newPassword)) e.newPassword = 'Password must be 8+ characters and include letters and numbers.'
     return e
   }
@@ -171,17 +168,17 @@ export default function AdminProfile() {
   return (
     <div>
       <PageHeader
-        title="Profile"
+        title="Account Settings"
         breadcrumbs={[
           { label: 'Dashboard', to: '/admin/dashboard' },
-          { label: 'Profile' }
+          { label: 'Account Settings' }
         ]}
       />
 
       <div className="w-full bg-white rounded-xl shadow-sm p-6">
         <div className="mb-4 flex gap-2">
           <button onClick={() => setTab('profile')} className={`px-4 py-2 rounded-lg font-medium ${tab === 'profile' ? 'bg-gradient-to-r from-indigo-600 to-indigo-400 text-white' : 'border border-gray-200 text-gray-700'}`}>
-            User Profile
+            Account Settings
           </button>
           <button onClick={() => setTab('password')} className={`px-4 py-2 rounded-lg font-medium ${tab === 'password' ? 'bg-gradient-to-r from-indigo-600 to-indigo-400 text-white' : 'border border-gray-200 text-gray-700'}`}>
             Change Password
