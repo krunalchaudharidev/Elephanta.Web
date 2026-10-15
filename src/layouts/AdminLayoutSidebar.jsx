@@ -8,6 +8,7 @@ const items = [
   ['/admin/orders', 'Orders', 'M3 7h18M6 7v14a2 2 0 002 2h8a2 2 0 002-2V7'],
   ['/admin/customers', 'Customers', 'M12 12a5 5 0 100-10 5 5 0 000 10zm-9 9a9 9 0 0118 0'],
   ['/admin/reports', 'Reports', 'M3 3v18h18'],
+  ['/admin/website-settings', 'Website Settings', 'M12 8a4 4 0 100 8 4 4 0 000-8zm0-6v2m0 16v2m10-10h-2M4 12H2m17.07-7.07-1.41 1.41M6.34 17.66l-1.41 1.41m14.14 0-1.41-1.41M6.34 6.34 4.93 4.93'],
   
 ]
 

@@ -157,6 +157,10 @@ export default function AdminOffers() {
                 : null
               const imgSrc = chosenId ? `/api/Media/${chosenId}` : ''
               
+              const isActiveVal = (o.isActive ?? o.IsActive)
+              const endDateVal = o.endDate ?? o.EndDate
+              const isExpired = endDateVal ? (new Date(endDateVal) < new Date()) : false
+
               return (
                 <tr key={id}>
                   <td className="px-4 py-4 whitespace-nowrap w-28">
@@ -173,7 +177,16 @@ export default function AdminOffers() {
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{formatToIST(o.startDate ?? o.StartDate)}</td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{formatToIST(o.endDate ?? o.EndDate)}</td>
                   <td className="px-4 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${((o.isActive ?? o.IsActive) ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700')}`}>{(o.isActive ?? o.IsActive) ? 'Active' : 'Inactive'}</span>
+                    <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${isActiveVal ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'}`}>
+                      {isActiveVal ? (
+                        <>
+                          <span>Active</span>
+                          {isExpired && <span className="ml-2 text-red-600 font-semibold">(Date expired)</span>}
+                        </>
+                      ) : (
+                        'Inactive'
+                      )}
+                    </span>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex text-right justify-end gap-2">

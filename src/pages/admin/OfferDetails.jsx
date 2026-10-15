@@ -44,6 +44,14 @@ export default function OfferDetails() {
   const [isSavingImages, setIsSavingImages] = useState(false)
   const [savingGeneral, setSavingGeneral] = useState(false)
 
+  const isOfferExpired = (() => {
+    const end = offer?.endDate
+    if (!end) return false
+    try {
+      return new Date(end) < new Date()
+    } catch (e) { return false }
+  })()
+
   // use toDateTimeLocalIST from utils/date
 
   useEffect(() => {
@@ -247,7 +255,16 @@ export default function OfferDetails() {
 
                 <div className="md:col-span-2 flex items-center gap-4">
                   <ToggleSwitch checked={offer.isActive} onChange={(v) => setOffer((p) => ({ ...p, isActive: v }))} />
-                  <span className="text-sm">Active</span>
+                  <span className="text-sm">
+                    {offer.isActive ? (
+                      <>
+                        <span className="text-emerald-600">Active</span>
+                        {isOfferExpired && <span className="ml-2 text-red-600 font-semibold">(Date expired)</span>}
+                      </>
+                    ) : (
+                      'Inactive'
+                    )}
+                  </span>
                 </div>
 
                 <div className="md:col-span-2 flex justify-end gap-2 mt-4">

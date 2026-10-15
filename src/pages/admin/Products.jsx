@@ -217,7 +217,22 @@ export default function AdminProducts() {
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{p.stockQuantity ?? p.StockQuantity ?? 0}</td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{p.categoryName ?? p.CategoryName ?? '-'}</td>
                   <td className="px-4 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${((p.isActive ?? p.IsActive) ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700')}`}>{(p.isActive ?? p.IsActive) ? 'Active' : 'Inactive'}</span>
+                    {(() => {
+                      const isActiveVal = (p.isActive ?? p.IsActive)
+                      const isCatActive = (p.isCategoryActive ?? p.IsCategoryActive)
+                      return (
+                        <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${isActiveVal ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'}`}>
+                          {isActiveVal ? (
+                            <>
+                              <span>Active</span>
+                              {isCatActive === false && <span className="ml-2 text-red-600 font-semibold">(Category inactive)</span>}
+                            </>
+                          ) : (
+                            'Inactive'
+                          )}
+                        </span>
+                      )
+                    })()}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex text-right justify-end gap-2">

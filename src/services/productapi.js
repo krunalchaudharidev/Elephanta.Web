@@ -1,19 +1,25 @@
 import { apiGet, apiPost } from './api'
 import { showToast, ToastTypes } from '../pages/admin/component/Toast'
 
-export async function getCategories(pageNumber = 1, pageSize = 10) {
-	const q = new URLSearchParams({ pageNumber: String(pageNumber), pageSize: String(pageSize) })
+export async function getCategories(pageNumber = 1, pageSize = 10, name, isActive, sort) {
+	const q = new URLSearchParams()
+	if (name !== undefined && name !== null && String(name).trim() !== '') q.append('name', String(name))
+	if (isActive !== undefined && isActive !== null) q.append('isActive', String(isActive))
+	if (sort !== undefined && sort !== null && String(sort).trim() !== '') q.append('sort', String(sort))
+	q.append('pageNumber', String(pageNumber))
+	q.append('pageSize', String(pageSize))
 	return apiGet(`/api/Product/categories?${q.toString()}`)
 }
 
-export async function searchProducts({ name, minPrice, maxPrice, categoryId, sort, isActive, pageNumber = 1, pageSize = 10 } = {}) {
+export async function searchProducts({ name, minPrice, maxPrice, categoryId, sort, isActive, isFeatured, pageNumber = 1, pageSize = 10 } = {}) {
 	const q = new URLSearchParams()
 	if (name !== undefined && name !== null && String(name).trim() !== '') q.append('name', String(name))
 	if (minPrice !== undefined && minPrice !== null && String(minPrice).trim() !== '') q.append('minPrice', String(minPrice))
 	if (maxPrice !== undefined && maxPrice !== null && String(maxPrice).trim() !== '') q.append('maxPrice', String(maxPrice))
 	if (categoryId) q.append('categoryId', String(categoryId))
 	if (sort) q.append('sort', String(sort))
-	if (isActive !== undefined && isActive !== null) q.append('isActive', String(isActive))
+ 	if (isActive !== undefined && isActive !== null) q.append('isActive', String(isActive))
+ 	if (isFeatured !== undefined && isFeatured !== null) q.append('isFeatured', String(isFeatured))
 	q.append('pageNumber', String(pageNumber))
 	q.append('pageSize', String(pageSize))
 	return apiGet(`/api/Product/products/search?${q.toString()}`)

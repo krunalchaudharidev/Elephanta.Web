@@ -9,10 +9,15 @@ import AdminProducts from '../pages/admin/Products'
 import ProductDetails from '../pages/admin/ProductDetails'
 import AdminOffers from '../pages/admin/Offers'
 import OfferDetails from '../pages/admin/OfferDetails'
+import WebsiteSettings from '../pages/admin/WebsiteSettings'
 import StoreLogin from '../pages/store/Login'
 import StoreHome from '../pages/store/Home'
+import StoreAbout from '../pages/store/About'
 import StoreProducts from '../pages/store/Products'
 import StoreCart from '../pages/store/Cart'
+import StoreProductDetails from '../pages/store/ProductDetails'
+import StoreCollections from '../pages/store/Collections'
+import StoreContact from '../pages/store/Contact'
 import { loadAuth, clearAuth, refreshToken, saveAuth } from '../services/authapi'
 import { useEffect, useState } from 'react'
 
@@ -74,7 +79,11 @@ export default function AppRoutes() {
         <Route path="/login" element={<StoreLogin />} />
         <Route path="/store" element={<StoreLayout />}>
           <Route index element={<StoreHome />} />
+          <Route path="about" element={<StoreAbout />} />
           <Route path="products" element={<StoreProducts />} />
+          <Route path="collections" element={<StoreCollections />} />
+          <Route path="contact" element={<StoreContact />} />
+          <Route path="products/:id" element={<StoreProductDetails />} />
           <Route path="cart" element={<StoreCart />} />
         </Route>
 
@@ -88,6 +97,7 @@ export default function AppRoutes() {
           <Route path="offers" element={<AdminOffers />} />
           <Route path="offers/:id" element={<OfferDetails />} />
           <Route path="account-settings" element={<AccountSettings />} />
+          <Route path="website-settings" element={<WebsiteSettings />} />
         </Route>
 
         <Route path="*" element={<div style={{padding:20}}>Not found</div>} />

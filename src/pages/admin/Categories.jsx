@@ -15,6 +15,8 @@ export default function AdminCategories() {
   const [pageNumber, setPageNumber] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [totalCount, setTotalCount] = useState(0)
+  const [nameFilter, setNameFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('') // '' = All, 'true' = Active, 'false' = Inactive
   const { isLoading, setLoading: setLoadingContext } = useLoading()
   const [error, setError] = useState(null)
   const [showCreate, setShowCreate] = useState(false)
@@ -29,7 +31,9 @@ export default function AdminCategories() {
     try { setLoadingContext?.(true) } catch {}
     setError(null)
     try {
-      const res = await getCategories(pg, pageSize)
+      const name = (nameFilter !== undefined && String(nameFilter).trim() !== '') ? String(nameFilter).trim() : null
+      const isActive = statusFilter === '' ? null : (statusFilter === 'true')
+      const res = await getCategories(pg, pageSize, name, isActive)
       setItems(res?.items || res?.Items || [])
       setTotalCount(res?.totalCount ?? res?.TotalCount ?? 0)
     } catch (e) {
@@ -40,6 +44,7 @@ export default function AdminCategories() {
   }
 
   useEffect(() => { loadData(pageNumber) }, [pageNumber, pageSize])
+
 
   async function handleConfirmDelete() {
     if (!deleting) return
@@ -96,6 +101,33 @@ export default function AdminCategories() {
             Add
           </button>
         </div>
+      </div>
+
+      <div className="mb-4 flex items-center gap-3">
+        <input
+          type="text"
+          placeholder="Search by name"
+          value={nameFilter}
+          onChange={(e) => setNameFilter(e.target.value)}
+          className="px-3 py-2 border rounded w-64 text-sm"
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-2 border rounded text-sm"
+        >
+          <option value="">All</option>
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </select>
+        <button
+          onClick={() => { setPageNumber(1); loadData(1) }}
+          className="px-3 py-2 bg-indigo-600 text-white rounded text-sm"
+        >Search</button>
+        <button
+          onClick={() => { setNameFilter(''); setStatusFilter(''); setPageNumber(1); loadData(1) }}
+          className="px-3 py-2 border rounded text-sm"
+        >Reset</button>
       </div>
 
       {error && (

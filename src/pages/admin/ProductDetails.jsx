@@ -178,6 +178,7 @@ const ChevronRight = (p) => (
 const ProductDetails = () => {
   const [activeTab, setActiveTab] = useState("general");
   const [isActive, setIsActive] = useState(true);
+  const [isCategoryActive, setIsCategoryActive] = useState(true);
 
   const [product, setProduct] = useState({
     id: null,
@@ -322,6 +323,7 @@ const ProductDetails = () => {
         setSlugTouched(Boolean(mapped.slug) && mapped.slug !== auto)
         setIsActive(Boolean(res?.isActive ?? res?.IsActive))
         setCategoryId(res?.categoryId ?? res?.CategoryId ?? '')
+        setIsCategoryActive(Boolean(res?.isCategoryActive ?? res?.IsCategoryActive ?? true))
 
         // build images array from ImageIds -> /api/Media/{id}
         const imageIds = res?.imageIds ?? res?.ImageIds ?? []
@@ -809,7 +811,16 @@ const ProductDetails = () => {
 
                       <ToggleSwitch checked={isActive} onChange={(v) => setIsActive(v)} />
 
-                      <span className={`text-sm font-medium ${isActive ? "text-emerald-600" : "text-slate-500"}`}>{isActive ? "Active" : "Inactive"}</span>
+                      <span className={`text-sm font-medium ${isActive ? "text-emerald-600" : "text-slate-500"}`}>
+                        {isActive ? (
+                          <>
+                            <span>Active</span>
+                            {!isCategoryActive && <span className="ml-2 text-red-600 font-semibold">(Category inactive)</span>}
+                          </>
+                        ) : (
+                          'Inactive'
+                        )}
+                      </span>
 
                     </div>
 
