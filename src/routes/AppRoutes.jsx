@@ -15,6 +15,7 @@ import StoreHome from '../pages/store/Home'
 import StoreAbout from '../pages/store/About'
 import StoreProducts from '../pages/store/Products'
 import StoreCart from '../pages/store/Cart'
+import StoreCheckout from '../pages/store/Checkout'
 import StoreProductDetails from '../pages/store/ProductDetails'
 import StoreCollections from '../pages/store/Collections'
 import StoreContact from '../pages/store/Contact'
@@ -78,9 +79,10 @@ export default function AppRoutes() {
           <Route index element={<StoreHome />} />
           <Route path="about" element={<StoreAbout />} />
           <Route path="contact" element={<StoreContact />} />
+          <Route path="login" element={<StoreLogin />} />
         </Route>
 
-        <Route path="/login" element={<StoreLogin />} />
+        <Route path="/store/login" element={<Navigate to="/login" replace />} />
         <Route path="/store" element={<StoreLayout />}>
           <Route index element={<Navigate to="/" replace />} />
           <Route path="about" element={<Navigate to="/about" replace />} />
@@ -89,6 +91,7 @@ export default function AppRoutes() {
           <Route path="contact" element={<Navigate to="/contact" replace />} />
           <Route path="products/:id" element={<StoreProductDetails />} />
           <Route path="cart" element={<StoreCart />} />
+          <Route path="checkout" element={<StoreCheckout />} />
         </Route>
 
         <Route path="/admin/login" element={<AdminLogin />} />

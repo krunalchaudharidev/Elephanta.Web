@@ -12,7 +12,7 @@ import {
   Trash2,
   Truck,
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
 const initialItems = [
   {
@@ -53,12 +53,13 @@ const formatPrice = (price) => new Intl.NumberFormat('en-IN', {
 }).format(price)
 
 export default function Cart() {
-  const [items, setItems] = useState(initialItems)
+  const location = useLocation()
+  const [items, setItems] = useState(() => location.state?.items ?? initialItems)
   const [savedItems, setSavedItems] = useState([])
-  const [coupon, setCoupon] = useState('')
-  const [appliedCoupon, setAppliedCoupon] = useState('')
+  const [coupon, setCoupon] = useState(() => location.state?.appliedCoupon ?? '')
+  const [appliedCoupon, setAppliedCoupon] = useState(() => location.state?.appliedCoupon ?? '')
   const [couponMessage, setCouponMessage] = useState('')
-  const [giftWrap, setGiftWrap] = useState(false)
+  const [giftWrap, setGiftWrap] = useState(() => location.state?.giftWrap ?? false)
 
   const subtotal = useMemo(
     () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
@@ -119,44 +120,51 @@ export default function Cart() {
 
   return (
     <div className="min-h-screen bg-[#fcfaf7] text-[#17251f]">
-      <section className="border-b border-[#eee6dc] bg-white">
-        <div className="mx-auto max-w-7xl px-5 py-8 sm:px-10 sm:py-10 lg:px-14">
-          <Link
-            to="/store/products"
-            className="inline-flex items-center gap-2 text-xs text-[#847a6f] transition hover:text-[#a77b4c]"
-          >
-            <ArrowLeft size={15} />
-            Continue Shopping
-          </Link>
+      <div className="bg-[#102923] px-4 py-2 text-center text-[9px] font-semibold uppercase tracking-[0.2em] text-white sm:text-[10px]">
+        <span className="mx-3 text-[#c5a06e]">-</span>
+        Free shipping on orders above {formatPrice(FREE_SHIPPING_THRESHOLD)}
+        <span className="mx-3 text-[#c5a06e]">-</span>
+      </div>
 
-          <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#a77b4c]">Your Selection</p>
-              <h1 className="mt-2 font-serif text-3xl sm:text-4xl">Shopping Bag</h1>
-            </div>
-            <p className="text-xs text-[#827b72]">
-              {totalQuantity} {totalQuantity === 1 ? 'item' : 'items'} in your bag
-            </p>
-          </div>
-
-          <div className="mt-8 flex max-w-md items-center gap-3 text-[10px]">
-            <div className="flex items-center gap-2 font-medium text-[#a77b4c]">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f2e6d7]"><ShoppingBag size={14} /></span>
-              Shopping Bag
-            </div>
-            <div className="h-px flex-1 bg-[#e6d9c9]" />
-            <div className="flex items-center gap-2 text-[#999087]">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[#e6d9c9]">2</span>
-              Checkout
-            </div>
-            <div className="h-px flex-1 bg-[#e6d9c9]" />
-            <div className="flex items-center gap-2 text-[#999087]">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[#e6d9c9]">3</span>
-              Confirmation
-            </div>
-          </div>
+      <section className="relative isolate overflow-hidden border-b border-[#eee5da]">
+        <img
+          src="https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=1800&q=85"
+          alt=""
+          className="absolute inset-0 -z-20 h-full w-full object-cover object-center"
+        />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#f8f1e8] via-[#f8f1e8]/95 to-[#f8f1e8]/40" />
+        <div className="mx-auto max-w-7xl px-5 py-12 sm:px-10 sm:py-16 lg:px-14">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#9a7047]">Your Selection</p>
+          <h1 className="mt-3 font-serif text-4xl sm:text-5xl">Shopping Bag</h1>
+          <p className="mt-4 max-w-md text-sm leading-6 text-[#6f6c64]">
+            Review your selected pieces before moving on to secure checkout.
+          </p>
+          <p className="mt-2 text-xs text-[#6f6c64]">
+            {totalQuantity} {totalQuantity === 1 ? 'item' : 'items'} in your bag
+          </p>
+          <div className="mt-6 h-px w-12 bg-[#a77b4c]" />
         </div>
       </section>
+
+      <div className="mx-auto max-w-7xl px-5 py-8 sm:px-10 sm:py-10 lg:px-14">
+        <div className="mb-8 flex items-center justify-between gap-2 sm:mb-10 sm:gap-4" aria-label="Checkout progress">
+          {[
+            { number: '1', title: 'Shopping Bag', active: true },
+            { number: '2', title: 'Checkout', active: false },
+            { number: '3', title: 'Order Confirmation', active: false },
+          ].map((step, index) => (
+            <div key={step.number} className="contents">
+              <div className={`flex shrink-0 items-center gap-2 text-[10px] sm:text-xs ${step.active ? 'font-semibold text-[#9a7047]' : 'text-[#898177]'}`}>
+                <span className={`flex h-7 w-7 items-center justify-center rounded-full border sm:h-8 sm:w-8 ${step.active ? 'border-[#a77b4c] bg-[#a77b4c] text-white' : 'border-[#d8cbb9]'}`}>
+                  {step.number}
+                </span>
+                <span className="hidden sm:inline">{step.title}</span>
+              </div>
+              {index < 2 && <div className="h-px min-w-3 flex-1 bg-[#ded3c5]" />}
+            </div>
+          ))}
+        </div>
+      </div>
 
       <section className="mx-auto max-w-7xl px-5 py-8 sm:px-10 sm:py-12 lg:px-14">
         {items.length === 0 ? (
@@ -333,7 +341,8 @@ export default function Cart() {
               <p className="mt-2 text-right text-[10px] text-[#92887e]">Taxes included where applicable.</p>
 
               <Link
-                to="/store/login"
+                to="/store/checkout"
+                state={{ items, appliedCoupon, giftWrap }}
                 className="mt-6 flex w-full items-center justify-center gap-3 rounded-md bg-[#142a23] px-5 py-4 text-xs font-medium text-white transition hover:bg-[#a77b4c]"
               >
                 Proceed to Checkout
