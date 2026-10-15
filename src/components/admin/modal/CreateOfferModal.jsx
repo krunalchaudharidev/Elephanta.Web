@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import ToggleSwitch from '../component/ToggleSwitch'
-import RichTextEditor from '../component/RichTextEditor'
+import ToggleSwitch from '../shared/ToggleSwitch'
+import RichTextEditor from '../shared/RichTextEditor'
 import { createOffer } from '../../../services/offerapi'
-import { showToast, ToastTypes } from '../component/Toast'
-import FileUpload from '../component/FileUpload'
+import { showToast, ToastTypes } from '../shared/Toast'
+import FileUpload from '../shared/FileUpload'
 import { uploadMedia } from '../../../services/mediaapi'
 
 export default function CreateOfferModal({ open, onClose, onCreated }) {

@@ -1,5 +1,5 @@
 import { apiGet, apiPost, fetchWithAuth } from './api'
-import { showToast, ToastTypes } from '../pages/admin/component/Toast'
+import { showToast, ToastTypes } from '../components/admin/shared/Toast'
 
 export async function searchOffers({ name, code, isActive, sort, pageNumber = 1, pageSize = 10 } = {}) {
   const q = new URLSearchParams()

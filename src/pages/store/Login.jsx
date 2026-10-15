@@ -24,7 +24,7 @@ export default function StoreLogin() {
         user: body.user,
       }
       saveAuth(auth)
-      navigate('/store', { replace: true })
+      navigate('/', { replace: true })
     } catch (err) {
       setError(err.message || 'Login failed')
       setLoading(false)

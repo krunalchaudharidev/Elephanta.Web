@@ -1,5 +1,5 @@
 import { apiGet, apiPost } from './api'
-import { showToast, ToastTypes } from '../pages/admin/component/Toast'
+import { showToast, ToastTypes } from '../components/admin/shared/Toast'
 
 export async function getCategories(pageNumber = 1, pageSize = 10, name, isActive, sort) {
 	const q = new URLSearchParams()

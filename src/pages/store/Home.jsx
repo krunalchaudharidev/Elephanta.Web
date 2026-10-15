@@ -244,7 +244,7 @@ export default function StoreHome() {
             </p>
 
             <a
-              href="/collections"
+              href="/store/collections"
               className="mt-6 inline-flex items-center gap-4 rounded-sm bg-[#a77c4e] px-5 py-3 text-[11px] font-medium text-white transition hover:bg-[#815b36] sm:px-6"
             >
               {slide.button}
@@ -324,7 +324,7 @@ export default function StoreHome() {
         <SectionHeading
           eyebrow="SHOP BY CATEGORY"
           title="Explore Our Collections"
-          href="/collections"
+          href="/store/collections"
           linkText="View All Collections"
         />
 
@@ -361,7 +361,7 @@ export default function StoreHome() {
           <SectionHeading
             eyebrow="FEATURED PRODUCTS"
             title="Best Sellers"
-            href="/products"
+            href="/store/products"
             linkText="View All Products"
           />
 

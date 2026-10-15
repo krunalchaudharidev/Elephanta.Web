@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import PageHeader from './component/PageHeader'
-import RemoteImage from './component/RemoteImage'
+import PageHeader from '../../components/admin/shared/PageHeader'
+import RemoteImage from '../../components/admin/shared/RemoteImage'
 import { formatToIST } from '../../utils/date'
 import { searchOffers } from '../../services/offerapi'
 import { deleteOffer } from '../../services/offerapi'
 import { useLoading } from '../../contexts/LoadingContext'
-import DeleteConfirm from './component/DeleteConfirm'
-import CreateOfferModal from './modal/CreateOfferModal'
+import DeleteConfirm from '../../components/admin/shared/DeleteConfirm'
+import CreateOfferModal from '../../components/admin/modal/CreateOfferModal'
 
 export default function AdminOffers() {
   const [items, setItems] = useState([])

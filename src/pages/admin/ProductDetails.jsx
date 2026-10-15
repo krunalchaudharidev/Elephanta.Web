@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
-import PageHeader from "./component/PageHeader";
-import ToggleSwitch from "./component/ToggleSwitch";
-import RemoteImage from "./component/RemoteImage";
+import PageHeader from "../../components/admin/shared/PageHeader";
+import ToggleSwitch from "../../components/admin/shared/ToggleSwitch";
+import RemoteImage from "../../components/admin/shared/RemoteImage";
 import { usePageTitle } from "../../contexts/PageTitleContext";
 import { useParams } from 'react-router-dom'
 import { getProduct, getCategories, updateProduct as apiUpdateProduct, getProductFaqs, createProductFaq, updateProductFaq, deleteProductFaq } from '../../services/productapi'
 import { uploadMedia, deleteMedia } from '../../services/mediaapi'
-import RichTextEditor from './component/RichTextEditor'
-import FileUpload from './component/FileUpload'
+import RichTextEditor from '../../components/admin/shared/RichTextEditor'
+import FileUpload from '../../components/admin/shared/FileUpload'
 
 // Inline SVG icon components (small, minimal paths)
 const Svg = ({ children, className, viewBox = "0 0 24 24", ...rest }) => (

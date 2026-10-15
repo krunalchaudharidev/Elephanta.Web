@@ -74,15 +74,19 @@ export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/store" replace />} />
+        <Route path="/" element={<StoreLayout />}>
+          <Route index element={<StoreHome />} />
+          <Route path="about" element={<StoreAbout />} />
+          <Route path="contact" element={<StoreContact />} />
+        </Route>
 
         <Route path="/login" element={<StoreLogin />} />
         <Route path="/store" element={<StoreLayout />}>
-          <Route index element={<StoreHome />} />
-          <Route path="about" element={<StoreAbout />} />
+          <Route index element={<Navigate to="/" replace />} />
+          <Route path="about" element={<Navigate to="/about" replace />} />
           <Route path="products" element={<StoreProducts />} />
           <Route path="collections" element={<StoreCollections />} />
-          <Route path="contact" element={<StoreContact />} />
+          <Route path="contact" element={<Navigate to="/contact" replace />} />
           <Route path="products/:id" element={<StoreProductDetails />} />
           <Route path="cart" element={<StoreCart />} />
         </Route>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getCategories, updateCategory } from '../../../services/productapi'
-import FileUpload from '../component/FileUpload'
-import ToggleSwitch from '../component/ToggleSwitch'
+import FileUpload from '../shared/FileUpload'
+import ToggleSwitch from '../shared/ToggleSwitch'
 import { uploadMedia } from '../../../services/mediaapi'
 
 export default function EditCategoryModal({ open, onClose, category, onUpdated }) {
@@ -223,7 +223,7 @@ export default function EditCategoryModal({ open, onClose, category, onUpdated }
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700">Parent Category</label>
-            <select value={parentCategoryId} onChange={(e) => setParentCategoryId(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+            <select value={parentCategoryId} onChange={(e) => setParentCategoryId(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
               <option value="">— None —</option>
               {parents.filter((p) => {
                 if (!category) return true

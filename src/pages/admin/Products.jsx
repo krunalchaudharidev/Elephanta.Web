@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import PageHeader from './component/PageHeader'
+import PageHeader from '../../components/admin/shared/PageHeader'
 import { searchProducts, getCategories } from '../../services/productapi'
 import { useLoading } from '../../contexts/LoadingContext'
-import RemoteImage from './component/RemoteImage'
-import CreateProductModal from './modal/CreateProductModal'
-import DeleteConfirm from './component/DeleteConfirm'
-import { showToast, ToastTypes } from './component/Toast'
+import RemoteImage from '../../components/admin/shared/RemoteImage'
+import CreateProductModal from '../../components/admin/modal/CreateProductModal'
+import DeleteConfirm from '../../components/admin/shared/DeleteConfirm'
+import { showToast, ToastTypes } from '../../components/admin/shared/Toast'
 import { deleteProduct } from '../../services/productapi'
 
 export default function AdminProducts() {

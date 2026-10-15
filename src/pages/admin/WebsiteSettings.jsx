@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Save } from 'lucide-react'
-import PageHeader from './component/PageHeader'
-import ToggleSwitch from './component/ToggleSwitch'
+import PageHeader from '../../components/admin/shared/PageHeader'
+import ToggleSwitch from '../../components/admin/shared/ToggleSwitch'
 import { getWebsiteSetting, saveWebsiteSetting } from '../../services/websitesettingsapi'
-import { showToast, ToastTypes } from './component/Toast'
+import { showToast, ToastTypes } from '../../components/admin/shared/Toast'
 
 const initialSettings = {
 	siteName: '',

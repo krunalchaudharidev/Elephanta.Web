@@ -1,5 +1,5 @@
 import { fetchWithAuth } from './api'
-import { showToast, ToastTypes } from '../pages/admin/component/Toast'
+import { showToast, ToastTypes } from '../components/admin/shared/Toast'
 
 export async function uploadMedia({ file, moduleType = 'product', isCompress = false, fieldName = 'File' }) {
   if (!file) throw new Error('file is required')

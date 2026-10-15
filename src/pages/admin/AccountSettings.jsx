@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import PageHeader from './component/PageHeader'
+import PageHeader from '../../components/admin/shared/PageHeader'
 import { loadAuth, BASE } from '../../services/api'
 import { fetchWithAuth } from '../../services/api'
 

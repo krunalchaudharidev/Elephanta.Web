@@ -1,5 +1,5 @@
 import { apiGet, apiPost } from './api'
-import { showToast, ToastTypes } from '../pages/admin/component/Toast'
+import { showToast, ToastTypes } from '../components/admin/shared/Toast'
 
 const WEBSITE_SETTING_ENDPOINT = '/api/WebsiteSetting'
 

@@ -12,16 +12,16 @@ export default function StoreLayout() {
       <header className="sticky top-0 bg-[#FDFCFB]/90 backdrop-blur-md border-b border-[#EAE6E2] z-50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
           <div className="flex flex-col items-center">
-            <Link to="/store" className="text-2xl font-semibold tracking-[0.25em] uppercase text-[#1A1919]">Elephanta</Link>
+            <Link to="/" className="text-2xl font-semibold tracking-[0.25em] uppercase text-[#1A1919]">Elephanta</Link>
             <span className="text-[9px] tracking-[0.4em] uppercase text-[#8C847E] -mt-1">Timeless Jewellery</span>
           </div>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium tracking-widest uppercase text-[#544F4B]">
-            <Link to="/store" className="hover:text-[#A37E58] border-b-2 border-transparent pb-1">Home</Link>
+            <Link to="/" className="hover:text-[#A37E58] border-b-2 border-transparent pb-1">Home</Link>
             <Link to="/store/products" className="hover:text-[#A37E58] transition-colors pb-1">Shop</Link>
             <Link to="/store/collections" className="hover:text-[#A37E58] transition-colors pb-1">Collections</Link>
-            <Link to="/store/about" className="hover:text-[#A37E58] transition-colors pb-1">About Us</Link>
-            <a href="/store/contact" className="hover:text-[#A37E58] transition-colors pb-1">Contact</a>
+            <Link to="/about" className="hover:text-[#A37E58] transition-colors pb-1">About Us</Link>
+            <Link to="/contact" className="hover:text-[#A37E58] transition-colors pb-1">Contact</Link>
           </nav>
 
           <div className="flex items-center gap-5 text-[#333130]">
@@ -44,11 +44,11 @@ export default function StoreLayout() {
         {/* Mobile nav panel */}
         <div className={`${mobileOpen ? 'block' : 'hidden'} md:hidden border-t border-[#EAE6E2] bg-[#FDFCFB]`}> 
           <div className="px-6 py-4 flex flex-col gap-3 text-sm">
-            <Link to="/store">Home</Link>
+            <Link to="/">Home</Link>
             <Link to="/store/products">Shop</Link>
             <Link to="/store/products">Collections</Link>
-            <Link to="/store/about">About Us</Link>
-            <a href="#contact">Contact</a>
+            <Link to="/about">About Us</Link>
+            <Link to="/contact">Contact</Link>
           </div>
         </div>
       </header>
@@ -65,7 +65,7 @@ export default function StoreLayout() {
           <div>
             <h5 className="font-semibold mb-2">Quick Links</h5>
             <ul className="text-sm text-white/70 space-y-1">
-              <li><Link to="/store" className="hover:text-white">Home</Link></li>
+              <li><Link to="/" className="hover:text-white">Home</Link></li>
               <li><Link to="/store/products" className="hover:text-white">Shop All Jewellery</Link></li>
               <li><Link to="/store/collections" className="hover:text-white">Collections</Link></li>
             </ul>

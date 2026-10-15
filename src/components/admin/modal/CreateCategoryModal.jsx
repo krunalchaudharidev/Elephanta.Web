@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getCategories, createCategory } from '../../../services/productapi'
-import FileUpload from '../component/FileUpload'
-import ToggleSwitch from '../component/ToggleSwitch'
+import FileUpload from '../shared/FileUpload'
+import ToggleSwitch from '../shared/ToggleSwitch'
 import { uploadMedia } from '../../../services/mediaapi'
 
 export default function CreateCategoryModal({ open, onClose, onCreated }) {

@@ -518,7 +518,7 @@ export default function Collections() {
           </div>
 
           <a
-            href="/products"
+            href="/store/products"
             className="inline-flex min-h-11 items-center justify-center gap-3 self-start rounded-md bg-[#102722] px-5 py-3 text-xs text-white transition hover:bg-[#a78051] sm:self-auto"
           >
             Shop All Jewellery

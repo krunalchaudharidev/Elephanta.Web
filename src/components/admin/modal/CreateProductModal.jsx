@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { createProduct, getCategories } from '../../../services/productapi'
-import FileUpload from '../component/FileUpload'
-import ToggleSwitch from '../component/ToggleSwitch'
+import FileUpload from '../shared/FileUpload'
+import ToggleSwitch from '../shared/ToggleSwitch'
 import { uploadMedia } from '../../../services/mediaapi'
-import RichTextEditor from '../component/RichTextEditor'
+import RichTextEditor from '../shared/RichTextEditor'
 
 export default function CreateProductModal({ open, onClose, onCreated }) {
   const [name, setName] = useState('')

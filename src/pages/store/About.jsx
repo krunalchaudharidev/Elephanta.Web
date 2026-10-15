@@ -206,7 +206,7 @@ export default function AboutUs() {
               <ArrowRight size={15} />
             </Link>
             <Link
-              to="/store/contact"
+              to="/contact"
               className="inline-flex items-center justify-center border border-[#dfd3c4] px-6 py-3.5 text-xs font-medium transition hover:border-[#a77b4c] hover:bg-[#f8f3ed]"
             >
               Contact Our Team

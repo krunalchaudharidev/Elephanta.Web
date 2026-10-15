@@ -36,8 +36,6 @@ const slides = [
   },
 ];
 
-
-
 function ArrowIcon({ direction = "right" }) {
   return (
     <svg
@@ -109,8 +107,6 @@ export default function JewelleryHero() {
       {/* Main content */}
       <div className="mx-auto flex min-h-[650px] max-w-[1600px] items-center px-6 py-24 sm:px-12 md:min-h-[720px] md:px-16 lg:px-24">
         <div className="w-full max-w-2xl">
-          
-
           {/* Slide copy */}
           <div key={activeIndex} className="animate-hero-content">
             <p className="mb-5 text-xs font-medium tracking-[0.35em] text-[#6e4e2a] sm:text-sm">{activeSlide.eyebrow}</p>

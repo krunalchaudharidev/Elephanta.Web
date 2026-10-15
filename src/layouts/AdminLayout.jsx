@@ -4,9 +4,9 @@ import Sidebar from './AdminLayoutSidebar'
 import Header from './AdminLayoutHeader'
 import { PageTitleProvider } from '../contexts/PageTitleContext'
 import { useState } from 'react'
-import ToastContainer from '../pages/admin/component/Toast'
+import ToastContainer from '../components/admin/shared/Toast'
 import LoadingContext from '../contexts/LoadingContext'
-import Loader from '../pages/admin/component/Loader'
+import Loader from '../components/admin/shared/Loader'
 
 export default function AdminLayout() {
   const auth = loadAuth()
