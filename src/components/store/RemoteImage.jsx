@@ -14,7 +14,7 @@ export default function RemoteImage({ src, alt = '', className = '' }) {
         return
       }
 
-      const blob = await fetchMediaBlob(src)
+      const blob = await fetchMediaBlob(src, 'customer')
       if (!blob) {
         // non-protected or fetch failed — use direct URL
         setUrl(src)

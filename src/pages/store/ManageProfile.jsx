@@ -9,7 +9,7 @@ import {
   X,
 } from 'lucide-react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { apiGet, clearAuth, fetchWithAuth, loadAuth } from '../../services/api'
+import { customerApiGet, clearCustomerAuth, fetchWithCustomerAuth, loadCustomerAuth } from '../../services/api'
 import { logout } from '../../services/authapi'
 
 const initialProfile = {
@@ -52,7 +52,7 @@ export default function ManageProfile() {
   const [notice, setNotice] = useState(null)
   const location = useLocation()
   const navigate = useNavigate()
-  const auth = loadAuth()
+  const auth = loadCustomerAuth()
   const routeSection = location.pathname.replace(/^\/manage-profile\/?/, '').split('/')[0]
   const activeTab = ({
     'change-password': 'password',
@@ -71,7 +71,7 @@ export default function ManageProfile() {
 
     async function loadProfile() {
       try {
-        const body = await apiGet('/api/User/me')
+        const body = await customerApiGet('/api/User/me')
         if (!active) return
         const user = body?.user || body || {}
         setProfile({
@@ -123,7 +123,7 @@ export default function ManageProfile() {
     setLoading(true)
     setNotice(null)
     try {
-      const response = await fetchWithAuth('/api/User/profile', {
+      const response = await fetchWithCustomerAuth('/api/User/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -150,7 +150,7 @@ export default function ManageProfile() {
     setLoading(true)
     setNotice(null)
     try {
-      const response = await fetchWithAuth('/api/User/change-password', {
+      const response = await fetchWithCustomerAuth('/api/User/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(passwordData),
@@ -211,11 +211,11 @@ export default function ManageProfile() {
 
   async function handleLogout() {
     try {
-      if (auth?.refreshToken) await logout(auth.refreshToken)
+      if (auth?.refreshToken) await logout(auth.refreshToken, 'customer')
     } catch {
       // Clear local authentication even if the server logout request fails.
     } finally {
-      clearAuth()
+      clearCustomerAuth()
       navigate('/login', { replace: true })
     }
   }

@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import PageHeader from '../../components/admin/shared/PageHeader'
-import { loadAuth, BASE } from '../../services/api'
-import { fetchWithAuth } from '../../services/api'
+import { loadAdminAuth, fetchWithAdminAuth } from '../../services/api'
 
 export default function AccountSettings() {
-  const auth = loadAuth()
+  const auth = loadAdminAuth()
   const user = auth?.user || {}
 
   const [tab, setTab] = useState('profile')
@@ -48,9 +47,9 @@ export default function AccountSettings() {
     async function load() {
       setLoadingUser(true)
       try {
-        const authLocal = loadAuth()
+        const authLocal = loadAdminAuth()
         if (authLocal?.accessToken) {
-          const r = await fetch(`${BASE}/api/User/me`, { headers: { Authorization: `Bearer ${authLocal.accessToken}` } })
+          const r = await fetchWithAdminAuth('/api/User/me')
           if (!mounted) return
           if (r.ok) {
             const body = await r.json()
@@ -90,7 +89,7 @@ export default function AccountSettings() {
     }
     setSaving(true)
     try {
-      const res = await fetchWithAuth('/api/User/profile', {
+      const res = await fetchWithAdminAuth('/api/User/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ firstName, middleName, lastName, phoneNumber }),
@@ -137,7 +136,7 @@ export default function AccountSettings() {
     }
     setPwLoading(true)
     try {
-      const res = await fetchWithAuth('/api/User/change-password', {
+      const res = await fetchWithAdminAuth('/api/User/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ oldPassword, newPassword }),

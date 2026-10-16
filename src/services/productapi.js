@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from './api'
+import { adminApiGet as apiGet, adminApiPost as apiPost, fetchWithAdminAuth as fetchWithAuth } from './api'
 import { showToast, ToastTypes } from '../components/admin/shared/Toast'
 
 export async function getCategories(pageNumber = 1, pageSize = 10, name, isActive, sort) {
@@ -175,8 +175,6 @@ export async function updateCategory(id, payload) {
 		throw e
 	}
 }
-
-import { fetchWithAuth } from './api'
 
 export async function deleteCategory(id) {
 	if (!id) throw new Error('id required')

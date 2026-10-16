@@ -1,4 +1,4 @@
-import { apiGet, apiPost, fetchWithAuth } from './api'
+import { adminApiGet as apiGet, adminApiPost as apiPost, fetchWithAdminAuth as fetchWithAuth } from './api'
 import { showToast, ToastTypes } from '../components/admin/shared/Toast'
 
 export async function searchOffers({ name, code, isActive, sort, pageNumber = 1, pageSize = 10 } = {}) {

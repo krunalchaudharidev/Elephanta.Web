@@ -1,4 +1,4 @@
-import { fetchWithAuth } from './api'
+import { buildUrl, fetchWithAdminAuth, fetchWithCustomerAuth } from './api'
 import { showToast, ToastTypes } from '../components/admin/shared/Toast'
 
 export async function uploadMedia({ file, moduleType = 'product', isCompress = false, fieldName = 'File' }) {
@@ -9,7 +9,7 @@ export async function uploadMedia({ file, moduleType = 'product', isCompress = f
   form.append('IsCompress', isCompress ? 'true' : 'false')
 
   try {
-    const res = await fetchWithAuth('/api/Media/upload', {
+    const res = await fetchWithAdminAuth('/api/Media/upload', {
       method: 'POST',
       body: form,
     })
@@ -34,13 +34,18 @@ export async function uploadMedia({ file, moduleType = 'product', isCompress = f
 }
 
 // Fetch a protected media endpoint and return a Blob, or null if the URL is not a media API or fetch failed.
-export async function fetchMediaBlob(src) {
+export async function fetchMediaBlob(src, scope = null) {
   if (!src) return null
   const isMediaApi = src.startsWith('/api/Media/') || src.includes('/api/Media/')
   if (!isMediaApi) return null
 
   try {
-    const res = await fetchWithAuth(src, { method: 'GET' })
+    const fetchMedia = scope === 'admin'
+      ? fetchWithAdminAuth
+      : scope === 'customer'
+        ? fetchWithCustomerAuth
+        : (input, init) => fetch(buildUrl(input), init)
+    const res = await fetchMedia(src, { method: 'GET' })
     if (!res.ok) return null
     const blob = await res.blob()
     return blob
@@ -54,7 +59,7 @@ export async function deleteMedia(id, moduleType = 'product') {
   const params = new URLSearchParams()
   if (moduleType) params.append('moduleType', moduleType)
   try {
-    const res = await fetchWithAuth(`/api/Media/${id}?${params.toString()}`, { method: 'DELETE' })
+    const res = await fetchWithAdminAuth(`/api/Media/${id}?${params.toString()}`, { method: 'DELETE' })
     if (!res.ok) {
       const txt = await res.text()
       let parsed = txt

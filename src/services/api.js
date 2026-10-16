@@ -1,23 +1,35 @@
 export const BASE = 'http://localhost:81'
 
-export function saveAuth(obj) {
+const AUTH_STORAGE_KEYS = {
+  admin: 'elephanta_admin_auth',
+  customer: 'elephanta_customer_auth',
+}
+
+function saveScopedAuth(scope, obj) {
   try {
-    localStorage.setItem('elephanta_auth', JSON.stringify(obj))
+    localStorage.setItem(AUTH_STORAGE_KEYS[scope], JSON.stringify(obj))
   } catch {}
 }
 
-export function loadAuth() {
+function loadScopedAuth(scope) {
   try {
-    const raw = localStorage.getItem('elephanta_auth')
+    const raw = localStorage.getItem(AUTH_STORAGE_KEYS[scope])
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
   }
 }
 
-export function clearAuth() {
-  try { localStorage.removeItem('elephanta_auth') } catch {}
+function clearScopedAuth(scope) {
+  try { localStorage.removeItem(AUTH_STORAGE_KEYS[scope]) } catch {}
 }
+
+export const saveAdminAuth = (auth) => saveScopedAuth('admin', auth)
+export const loadAdminAuth = () => loadScopedAuth('admin')
+export const clearAdminAuth = () => clearScopedAuth('admin')
+export const saveCustomerAuth = (auth) => saveScopedAuth('customer', auth)
+export const loadCustomerAuth = () => loadScopedAuth('customer')
+export const clearCustomerAuth = () => clearScopedAuth('customer')
 
 export async function refreshToken(refreshToken) {
   const res = await fetch(`${BASE}/api/Auth/refresh-token`, {
@@ -48,8 +60,8 @@ async function parseJsonOrText(res) {
   return res.text()
 }
 
-export async function apiGet(path, init = {}) {
-  const res = await fetchWithAuth(path, { method: 'GET', ...init })
+async function apiGetFor(scope, path, init = {}) {
+  const res = await fetchWithAuthFor(scope, path, { method: 'GET', ...init })
   if (res.status === 204) return null
   if (!res.ok) {
     const body = await parseJsonOrText(res)
@@ -61,11 +73,11 @@ export async function apiGet(path, init = {}) {
   return parseJsonOrText(res)
 }
 
-export async function apiPost(path, data, init = {}) {
+async function apiPostFor(scope, path, data, init = {}) {
   const headers = new Headers(init.headers || {})
   if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
   const body = headers.get('Content-Type')?.includes('application/json') ? JSON.stringify(data) : data
-  const res = await fetchWithAuth(path, { method: 'POST', ...init, headers, body })
+  const res = await fetchWithAuthFor(scope, path, { method: 'POST', ...init, headers, body })
   if (res.status === 204) return null
   if (!res.ok) {
     const bodyErr = await parseJsonOrText(res)
@@ -77,16 +89,24 @@ export async function apiPost(path, data, init = {}) {
   return parseJsonOrText(res)
 }
 
+export const adminApiGet = (path, init) => apiGetFor('admin', path, init)
+export const adminApiPost = (path, data, init) => apiPostFor('admin', path, data, init)
+export const customerApiGet = (path, init) => apiGetFor('customer', path, init)
+export const customerApiPost = (path, data, init) => apiPostFor('customer', path, data, init)
 
-function buildUrl(path) {
+
+export function buildUrl(path) {
   if (!path) return BASE
   if (path.startsWith('http://') || path.startsWith('https://')) return path
   if (path.startsWith('/')) return `${BASE}${path}`
   return `${BASE}/${path}`
 }
 
-export async function fetchWithAuth(input, init = {}) {
+async function fetchWithAuthFor(scope, input, init = {}) {
   const url = buildUrl(input)
+  const loadAuth = scope === 'admin' ? loadAdminAuth : loadCustomerAuth
+  const saveAuth = scope === 'admin' ? saveAdminAuth : saveCustomerAuth
+  const clearAuth = scope === 'admin' ? clearAdminAuth : clearCustomerAuth
   const auth = loadAuth()
 
   const headers = new Headers(init.headers || {})
@@ -121,3 +141,6 @@ export async function fetchWithAuth(input, init = {}) {
     throw e
   }
 }
+
+export const fetchWithAdminAuth = (input, init) => fetchWithAuthFor('admin', input, init)
+export const fetchWithCustomerAuth = (input, init) => fetchWithAuthFor('customer', input, init)

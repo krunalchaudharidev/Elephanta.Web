@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { login as apiLogin, saveAuth } from '../../services/authapi'
+import { login as apiLogin, saveAdminAuth } from '../../services/authapi'
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('')
@@ -40,7 +40,7 @@ export default function AdminLogin() {
         expiresAt: body.expiresAt,
         user: body.user,
       }
-      saveAuth(auth)
+      saveAdminAuth(auth)
       navigate('/admin/dashboard', { replace: true })
     } catch (err) {
       setError(err.message || 'Login failed')

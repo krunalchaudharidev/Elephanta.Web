@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
-import { Outlet, Link } from 'react-router-dom'
-import { loadAuth } from '../services/authapi'
+import { Outlet, Link, NavLink } from 'react-router-dom'
+import { loadCustomerAuth } from '../services/authapi'
 
 export default function StoreLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
-  const accountPath = loadAuth()?.accessToken ? '/manage-profile' : '/login'
+  const accountPath = loadCustomerAuth()?.accessToken ? '/manage-profile' : '/login'
 
   return (
     <div className="min-h-screen bg-[#FDFCFB] text-[#2C2A29] font-sans antialiased">
@@ -19,11 +19,11 @@ export default function StoreLayout() {
           </div>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium tracking-widest uppercase text-[#544F4B]">
-            <Link to="/" className="hover:text-[#A37E58] border-b-2 border-transparent pb-1">Home</Link>
-            <Link to="/store/products" className="hover:text-[#A37E58] transition-colors pb-1">Shop</Link>
-            <Link to="/store/collections" className="hover:text-[#A37E58] transition-colors pb-1">Collections</Link>
-            <Link to="/about" className="hover:text-[#A37E58] transition-colors pb-1">About Us</Link>
-            <Link to="/contact" className="hover:text-[#A37E58] transition-colors pb-1">Contact</Link>
+            <NavLink to="/" end className={({ isActive }) => `border-b-2 pb-1 transition-colors ${isActive ? 'border-[#A37E58] text-[#A37E58]' : 'border-transparent hover:text-[#A37E58]'}`}>Home</NavLink>
+            <NavLink to="/store/products" className={({ isActive }) => `border-b-2 pb-1 transition-colors ${isActive ? 'border-[#A37E58] text-[#A37E58]' : 'border-transparent hover:text-[#A37E58]'}`}>Shop</NavLink>
+            <NavLink to="/store/collections" className={({ isActive }) => `border-b-2 pb-1 transition-colors ${isActive ? 'border-[#A37E58] text-[#A37E58]' : 'border-transparent hover:text-[#A37E58]'}`}>Collections</NavLink>
+            <NavLink to="/about" className={({ isActive }) => `border-b-2 pb-1 transition-colors ${isActive ? 'border-[#A37E58] text-[#A37E58]' : 'border-transparent hover:text-[#A37E58]'}`}>About</NavLink>
+            <NavLink to="/contact" className={({ isActive }) => `border-b-2 pb-1 transition-colors ${isActive ? 'border-[#A37E58] text-[#A37E58]' : 'border-transparent hover:text-[#A37E58]'}`}>Contact</NavLink>
           </nav>
 
           <div className="flex items-center gap-5 text-[#333130]">
@@ -46,11 +46,11 @@ export default function StoreLayout() {
         {/* Mobile nav panel */}
         <div className={`${mobileOpen ? 'block' : 'hidden'} md:hidden border-t border-[#EAE6E2] bg-[#FDFCFB]`}> 
           <div className="px-6 py-4 flex flex-col gap-3 text-sm">
-            <Link to="/">Home</Link>
-            <Link to="/store/products">Shop</Link>
-            <Link to="/store/products">Collections</Link>
-            <Link to="/about">About Us</Link>
-            <Link to="/contact">Contact</Link>
+            <NavLink to="/" end onClick={() => setMobileOpen(false)} className={({ isActive }) => isActive ? 'font-medium text-[#A37E58]' : 'text-[#544F4B]'}>Home</NavLink>
+            <NavLink to="/store/products" onClick={() => setMobileOpen(false)} className={({ isActive }) => isActive ? 'font-medium text-[#A37E58]' : 'text-[#544F4B]'}>Shop</NavLink>
+            <NavLink to="/store/collections" onClick={() => setMobileOpen(false)} className={({ isActive }) => isActive ? 'font-medium text-[#A37E58]' : 'text-[#544F4B]'}>Collections</NavLink>
+            <NavLink to="/about" onClick={() => setMobileOpen(false)} className={({ isActive }) => isActive ? 'font-medium text-[#A37E58]' : 'text-[#544F4B]'}>About Us</NavLink>
+            <NavLink to="/contact" onClick={() => setMobileOpen(false)} className={({ isActive }) => isActive ? 'font-medium text-[#A37E58]' : 'text-[#544F4B]'}>Contact</NavLink>
           </div>
         </div>
       </header>

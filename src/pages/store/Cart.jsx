@@ -151,26 +151,6 @@ export default function Cart() {
         </nav>
       </div>
 
-      <div className="mx-auto max-w-7xl px-5 py-8 sm:px-10 sm:py-10 lg:px-14">
-        <div className="mb-8 flex items-center justify-between gap-2 sm:mb-10 sm:gap-4" aria-label="Checkout progress">
-          {[
-            { number: '1', title: 'Shopping Bag', active: true },
-            { number: '2', title: 'Checkout', active: false },
-            { number: '3', title: 'Order Confirmation', active: false },
-          ].map((step, index) => (
-            <div key={step.number} className="contents">
-              <div className={`flex shrink-0 items-center gap-2 text-[10px] sm:text-xs ${step.active ? 'font-semibold text-[#9a7047]' : 'text-[#898177]'}`}>
-                <span className={`flex h-7 w-7 items-center justify-center rounded-full border sm:h-8 sm:w-8 ${step.active ? 'border-[#a77b4c] bg-[#a77b4c] text-white' : 'border-[#d8cbb9]'}`}>
-                  {step.number}
-                </span>
-                <span className="hidden sm:inline">{step.title}</span>
-              </div>
-              {index < 2 && <div className="h-px min-w-3 flex-1 bg-[#ded3c5]" />}
-            </div>
-          ))}
-        </div>
-      </div>
-
       <section className="mx-auto max-w-7xl px-5 py-8 sm:px-10 sm:py-12 lg:px-14">
         {items.length === 0 ? (
           <div className="mx-auto max-w-lg py-16 text-center sm:py-24">

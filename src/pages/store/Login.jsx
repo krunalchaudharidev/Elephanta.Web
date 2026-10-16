@@ -8,7 +8,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
-import { login as apiLogin, saveAuth } from '../../services/authapi'
+import { login as apiLogin, saveCustomerAuth } from '../../services/authapi'
 
 export default function StoreLogin() {
   const [showPassword, setShowPassword] = useState(false)
@@ -33,7 +33,7 @@ export default function StoreLogin() {
 
     try {
       const body = await apiLogin(form.email, form.password)
-      saveAuth({
+      saveCustomerAuth({
         accessToken: body.accessToken,
         refreshToken: body.refreshToken,
         expiresAt: body.expiresAt,

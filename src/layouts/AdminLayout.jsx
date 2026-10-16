@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom'
-import { loadAuth, clearAuth, logout } from '../services/authapi'
+import { loadAdminAuth, clearAdminAuth, logout } from '../services/authapi'
 import Sidebar from './AdminLayoutSidebar'
 import Header from './AdminLayoutHeader'
 import { PageTitleProvider } from '../contexts/PageTitleContext'
@@ -9,19 +9,19 @@ import LoadingContext from '../contexts/LoadingContext'
 import Loader from '../components/admin/shared/Loader'
 
 export default function AdminLayout() {
-  const auth = loadAuth()
+  const auth = loadAdminAuth()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   async function signOut() {
-    const auth = loadAuth()
+    const auth = loadAdminAuth()
     try {
-      if (auth?.refreshToken) await logout(auth.refreshToken)
+      if (auth?.refreshToken) await logout(auth.refreshToken, 'admin')
     } catch (e) {
       // ignore logout errors, still clear local auth
     } finally {
-      clearAuth()
+      clearAdminAuth()
       window.location.href = '/admin/login'
     }
   }

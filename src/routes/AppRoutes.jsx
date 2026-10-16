@@ -27,7 +27,7 @@ import StoreCheckout from '../pages/store/Checkout'
 import StoreProductDetails from '../pages/store/ProductDetails'
 import StoreCollections from '../pages/store/Collections'
 import StoreContact from '../pages/store/Contact'
-import { loadAuth, clearAuth, refreshToken, saveAuth } from '../services/authapi'
+import { loadAdminAuth, clearAdminAuth, refreshToken, saveAdminAuth } from '../services/authapi'
 import { useEffect, useState } from 'react'
 
 function RequireAdmin({ children }) {
@@ -37,7 +37,7 @@ function RequireAdmin({ children }) {
   useEffect(() => {
     let mounted = true
     async function check() {
-      const auth = loadAuth()
+      const auth = loadAdminAuth()
       if (!auth) {
         navigate('/admin/login', { replace: true })
         return
@@ -50,11 +50,11 @@ function RequireAdmin({ children }) {
           // attempt refresh
           try {
             const newAuth = await refreshToken(auth.refreshToken)
-            saveAuth(newAuth)
+            saveAdminAuth(newAuth)
             if (mounted) setReady(true)
             return
           } catch (e) {
-            clearAuth()
+            clearAdminAuth()
             navigate('/admin/login', { replace: true })
             return
           }
@@ -63,7 +63,7 @@ function RequireAdmin({ children }) {
 
       const roles = auth?.user?.roles || []
       if (!roles.includes('Admin')) {
-        clearAuth()
+        clearAdminAuth()
         navigate('/admin/login', { replace: true })
         return
       }

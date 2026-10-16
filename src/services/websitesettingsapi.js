@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from './api'
+import { adminApiGet as apiGet, adminApiPost as apiPost } from './api'
 import { showToast, ToastTypes } from '../components/admin/shared/Toast'
 
 const WEBSITE_SETTING_ENDPOINT = '/api/WebsiteSetting'

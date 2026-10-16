@@ -52,7 +52,7 @@ export default function FileUpload({
         return
       }
 
-        const blob = await fetchMediaBlob(previewUrl)
+        const blob = await fetchMediaBlob(previewUrl, 'admin')
         if (!blob) {
           if (remotePreview) { URL.revokeObjectURL(remotePreview); setRemotePreview('') }
           // use the original previewUrl (may be absolute public URL)
