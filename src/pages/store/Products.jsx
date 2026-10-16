@@ -402,17 +402,8 @@ export default function ProductListing() {
   return (
     <div className="min-h-screen bg-[#fcfaf7] text-[#172521]">
       
-      {/* Breadcrumb */}
-      <div className="mx-auto max-w-[1440px] px-5 pt-6 lg:px-10">
-        <div className="flex items-center gap-2 text-xs text-[#92887c]">
-          <a href="/" className="hover:text-[#a78051]">Home</a>
-          <ChevronRight size={13} />
-          <span className="text-[#172521]">Shop All Jewellery</span>
-        </div>
-      </div>
-
       {/* Page heading */}
-      <section className="mx-auto max-w-[1440px] px-5 pb-7 pt-7 lg:px-10 lg:pb-10">
+      <section className="mx-auto max-w-[1440px] px-5 pb-4 pt-7 lg:px-10 lg:pb-5">
         <div className="relative overflow-hidden rounded-xl bg-[#eee4d8]">
           <div className="absolute inset-0 bg-gradient-to-r from-[#eee4d8] via-[#eee4d8]/90 to-[#eee4d8]/10" />
           <div className="relative flex min-h-48 items-center px-6 py-9 sm:px-10 md:min-h-56 md:px-14">
@@ -431,6 +422,15 @@ export default function ProductListing() {
           </div>
         </div>
       </section>
+
+      {/* Breadcrumb */}
+      <div className="mx-auto max-w-[1440px] px-5 pb-6 pt-2 lg:px-10">
+        <div className="flex items-center gap-2 text-xs text-[#92887c]">
+          <a href="/" className="hover:text-[#a78051]">Home</a>
+          <ChevronRight size={13} />
+          <span className="text-[#172521]">Shop All Jewellery</span>
+        </div>
+      </div>
 
       {/* Main listing */}
       <main className="mx-auto max-w-[1440px] px-5 pb-16 lg:px-10">

@@ -134,9 +134,9 @@ export default function StoreLogin() {
 
             <p className="text-center text-xs text-[#68736C]">
               Don't have an account?{' '}
-              <button type="button" onClick={() => { setError(''); setNotice('Account registration is not available yet. Contact our team for assistance.') }} className="font-medium text-[#99683B] underline decoration-[#C7A47B] underline-offset-4 transition hover:text-[#183129]">
+              <Link to="/register" className="font-medium text-[#99683B] underline decoration-[#C7A47B] underline-offset-4 transition hover:text-[#183129]">
                 Create Account
-              </button>
+              </Link>
             </p>
 
             <div className="mt-8 flex items-center justify-center gap-2.5 text-center text-[10px] leading-5 text-[#849087]">

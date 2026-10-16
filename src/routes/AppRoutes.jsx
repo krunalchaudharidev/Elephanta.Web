@@ -11,6 +11,14 @@ import AdminOffers from '../pages/admin/Offers'
 import OfferDetails from '../pages/admin/OfferDetails'
 import WebsiteSettings from '../pages/admin/WebsiteSettings'
 import StoreLogin from '../pages/store/Login'
+import StoreRegister from '../pages/store/Register'
+import ManageProfile from '../pages/store/ManageProfile'
+import PersonalInformation from '../components/store/PersonalInformation'
+import ChangePassword from '../components/store/ChangePassword'
+import Addresses from '../components/store/Addresses'
+import OrderHistory from '../components/store/OrderHistory'
+import OrderDetails from '../components/store/OrderDetails'
+import Wishlist from '../components/store/Wishlist'
 import StoreHome from '../pages/store/Home'
 import StoreAbout from '../pages/store/About'
 import StoreProducts from '../pages/store/Products'
@@ -80,6 +88,15 @@ export default function AppRoutes() {
           <Route path="about" element={<StoreAbout />} />
           <Route path="contact" element={<StoreContact />} />
           <Route path="login" element={<StoreLogin />} />
+          <Route path="register" element={<StoreRegister />} />
+          <Route path="manage-profile" element={<ManageProfile />}>
+            <Route index element={<PersonalInformation />} />
+            <Route path="change-password" element={<ChangePassword />} />
+            <Route path="addresses" element={<Addresses />} />
+            <Route path="orders" element={<OrderHistory />} />
+            <Route path="orders/:orderId" element={<OrderDetails />} />
+            <Route path="wishlist" element={<Wishlist />} />
+          </Route>
         </Route>
 
         <Route path="/store/login" element={<Navigate to="/login" replace />} />

@@ -4,6 +4,7 @@ import {
   ArrowRight,
   Check,
   ChevronDown,
+  ChevronRight,
   CreditCard,
   Gift,
   Landmark,
@@ -199,28 +200,32 @@ export default function Checkout() {
 
   return (
     <div className="bg-[#fcfaf7] text-[#172923]">
-      <div className="bg-[#102923] px-4 py-2 text-center text-[9px] font-semibold uppercase tracking-[0.2em] text-white sm:text-[10px]">
-        <span className="mx-3 text-[#c5a06e]">-</span>
-        Free shipping on orders above {formatPrice(2000)}
-        <span className="mx-3 text-[#c5a06e]">-</span>
-      </div>
-
-      <section className="relative isolate overflow-hidden border-b border-[#eee5da]">
+      <section className="relative isolate min-h-[220px] overflow-hidden sm:min-h-[255px]">
         <img
-          src="https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=1800&q=85"
+          src="https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=2000&q=90"
           alt=""
           className="absolute inset-0 -z-20 h-full w-full object-cover object-center"
         />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#f8f1e8] via-[#f8f1e8]/95 to-[#f8f1e8]/40" />
-        <div className="mx-auto max-w-7xl px-5 py-12 sm:px-10 sm:py-16 lg:px-14">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#9a7047]">Secure Checkout</p>
-          <h1 className="mt-3 font-serif text-4xl sm:text-5xl">Complete Your Order</h1>
-          <p className="mt-4 max-w-md text-sm leading-6 text-[#6f6c64]">
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#f4ece2] via-[#f4ece2]/95 to-[#f4ece2]/10" />
+        <div className="mx-auto flex min-h-[220px] max-w-7xl items-center px-5 py-10 sm:min-h-[255px] lg:px-8">
+          <div className="max-w-xl">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.27em] text-[#956c3e] sm:text-[10px]">Secure Checkout</p>
+            <h1 className="mt-3 font-serif text-4xl leading-tight sm:text-5xl">Complete Your Order</h1>
+            <p className="mt-3 max-w-md text-xs leading-6 text-[#514f49] sm:text-sm">
             Review your details and choose your preferred payment method to complete your purchase.
-          </p>
-          <div className="mt-6 h-px w-12 bg-[#a77b4c]" />
+            </p>
+            <div className="mt-4 h-0.5 w-8 bg-[#a78051]" />
+          </div>
         </div>
       </section>
+
+      <div className="mx-auto max-w-7xl px-5 pt-5 lg:px-8">
+        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-[11px] text-[#77766f]">
+          <Link to="/" className="hover:text-[#a78051]">Home</Link>
+          <ChevronRight size={13} aria-hidden="true" />
+          <span className="text-[#172923]">Checkout</span>
+        </nav>
+      </div>
 
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-10 sm:py-10 lg:px-14">
         <div className="mb-8 flex items-center justify-between gap-2 sm:mb-10 sm:gap-4" aria-label="Checkout progress">
