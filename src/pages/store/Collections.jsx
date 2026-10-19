@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Grid2X2,
   Heart,
-  List,
   Search,
   ShoppingCart,
   UserRound,
@@ -155,8 +154,7 @@ const PAGE_SIZE = 6;
 
 export default function Collections() {
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("featured");
-  const [viewMode, setViewMode] = useState("grid");
+  const [sortBy, setSortBy] = useState("name-asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [wishlist, setWishlist] = useState([]);
 
@@ -173,8 +171,6 @@ export default function Collections() {
       result.sort((a, b) => a.name.localeCompare(b.name));
     } else if (sortBy === "name-desc") {
       result.sort((a, b) => b.name.localeCompare(a.name));
-    } else if (sortBy === "count-desc") {
-      result.sort((a, b) => b.count - a.count);
     }
 
     return result;
@@ -288,10 +284,8 @@ export default function Collections() {
                 }}
                 className="h-10 min-w-32 appearance-none rounded-md border border-[#e5ddd3] bg-white py-2 pl-3 pr-9 text-xs outline-none focus:border-[#a78051]"
               >
-                <option value="featured">Featured</option>
                 <option value="name-asc">Name: A–Z</option>
                 <option value="name-desc">Name: Z–A</option>
-                <option value="count-desc">Most products</option>
               </select>
               <ChevronDown
                 size={14}
@@ -299,60 +293,20 @@ export default function Collections() {
               />
             </div>
 
-            <div className="ml-1 flex rounded-md border border-[#e5ddd3] bg-white p-0.5">
-              <button
-                onClick={() => setViewMode("grid")}
-                aria-label="Grid view"
-                aria-pressed={viewMode === "grid"}
-                className={`flex h-8 w-8 items-center justify-center rounded transition ${
-                  viewMode === "grid"
-                    ? "bg-[#eee3d3] text-[#946a3c]"
-                    : "text-[#7c7c74] hover:bg-[#f6f1eb]"
-                }`}
-              >
-                <Grid2X2 size={16} />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                aria-label="List view"
-                aria-pressed={viewMode === "list"}
-                className={`flex h-8 w-8 items-center justify-center rounded transition ${
-                  viewMode === "list"
-                    ? "bg-[#eee3d3] text-[#946a3c]"
-                    : "text-[#7c7c74] hover:bg-[#f6f1eb]"
-                }`}
-              >
-                <List size={16} />
-              </button>
-            </div>
           </div>
         </div>
 
         {/* Collection cards */}
         {currentCollections.length > 0 ? (
-          <div
-            className={
-              viewMode === "grid"
-                ? "grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
-                : "grid grid-cols-1 gap-4"
-            }
-          >
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {currentCollections.map((collection) => (
               <article
                 key={collection.id}
-                className={`group min-w-0 ${
-                  viewMode === "list"
-                    ? "flex flex-col overflow-hidden rounded-lg border border-[#e9e1d7] bg-white sm:flex-row"
-                    : ""
-                }`}
+                className="group min-w-0"
               >
                 <a
                   href={getCollectionUrl(collection.slug)}
-                  className={`relative block overflow-hidden rounded-lg bg-[#eee5db] ${
-                    viewMode === "grid"
-                      ? "aspect-[1.25]"
-                      : "aspect-[1.3] sm:aspect-auto sm:min-h-48 sm:w-64 sm:shrink-0"
-                  }`}
+                  className="relative block aspect-[1.25] overflow-hidden rounded-lg bg-[#eee5db]"
                 >
                   <img
                     src={collection.image}
@@ -382,13 +336,7 @@ export default function Collections() {
                   </span>
                 </a>
 
-                <div
-                  className={`flex items-center justify-between gap-3 ${
-                    viewMode === "grid"
-                      ? "px-1 pt-3"
-                      : "flex-1 p-4 sm:p-6"
-                  }`}
-                >
+                <div className="flex items-center justify-between gap-3 px-1 pt-3">
                   <div>
                     <a
                       href={getCollectionUrl(collection.slug)}

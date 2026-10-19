@@ -76,7 +76,7 @@ export default function StoreLayout() {
             <h5 className="font-semibold mb-2">Customer Care</h5>
             <ul className="text-sm text-white/70 space-y-1">
               <li><a href="/faqs" className="hover:text-white">FAQs</a></li>
-              <li><a href="/shipping" className="hover:text-white">Shipping Policy</a></li>
+              <li><Link to="/shipping-policy" className="hover:text-white">Shipping Policy</Link></li>
               <li><a href="/returns" className="hover:text-white">Return & Refund</a></li>
             </ul>
           </div>

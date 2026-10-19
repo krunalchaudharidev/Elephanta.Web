@@ -1,5 +1,7 @@
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import RemoteImage from "../../components/store/RemoteImage";
+import { getCategories, searchProducts } from "../../services/productapi";
 import {
   ArrowLeft,
   ArrowRight,
@@ -77,68 +79,6 @@ const benefits = [
   },
 ];
 
-const categories = [
-  {
-    name: "Bangles",
-    slug: "bangles",
-    image:
-      "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    name: "Rings",
-    slug: "rings",
-    image:
-      "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    name: "Earrings",
-    slug: "earrings",
-    image:
-      "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    name: "Necklaces",
-    slug: "necklaces",
-    image:
-      "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=800&q=85",
-  },
-];
-
-const products = [
-  {
-    id: 1,
-    name: "Royal Kundan Bridal Necklace",
-    price: 20200,
-    rating: "4.8",
-    image:
-      "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    id: 2,
-    name: "Pearl Drop Statement Earrings",
-    price: 7700,
-    rating: "4.7",
-    image:
-      "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    id: 3,
-    name: "Elegant Solitaire Crystal Ring",
-    price: 4000,
-    rating: "4.9",
-    image:
-      "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    id: 4,
-    name: "Royal Gold Plated Bangles",
-    price: 900,
-    rating: "4.6",
-    image:
-      "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=800&q=85",
-  },
-];
-
 const formatPrice = (price) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -172,12 +112,80 @@ function SectionHeading({ eyebrow, title, href, linkText }) {
 }
 
 export default function StoreHome() {
+  const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState([]);
   const [activeSlide, setActiveSlide] = useState(0);
   const [wishlist, setWishlist] = useState([]);
   const [cart, setCart] = useState([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCategories() {
+      try {
+        const response = await getCategories(1, 4, undefined, true, "createdatdesc");
+        if (!cancelled) {
+          setCategories(response?.items || response?.Items || []);
+        }
+      } catch {
+        if (!cancelled) setCategories([]);
+      }
+    }
+
+    loadCategories();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadFeaturedProducts() {
+      try {
+        const response = await searchProducts({
+          isFeatured: true,
+          sort: "createdatdesc",
+          pageNumber: 1,
+          pageSize: 4,
+        });
+        const items = response?.items || response?.Items || [];
+        if (!cancelled) {
+          setProducts(
+            items.map((item) => {
+              const imageIds = item.imageIds ?? item.ImageIds ?? [];
+              const primaryImageId = item.primaryImageId ?? item.PrimaryImageId;
+              const imageId = primaryImageId
+                ? imageIds.find((id) => String(id) === String(primaryImageId)) ?? imageIds[0]
+                : imageIds[0];
+
+              return {
+                ...item,
+                id: item.id ?? item.Id,
+                name: item.name ?? item.Name ?? "",
+                price: item.price ?? item.Price ?? 0,
+                rating: item.rating ?? item.Rating,
+                image:
+                  item.imageUrl ??
+                  item.ImageUrl ??
+                  (imageId ? `/api/Media/${imageId}` : ""),
+              };
+            })
+          );
+        }
+      } catch {
+        if (!cancelled) setProducts([]);
+      }
+    }
+
+    loadFeaturedProducts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const slide = slides[activeSlide];
 
@@ -329,29 +337,38 @@ export default function StoreHome() {
         />
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          {categories.map((category) => (
+          {categories.map((category) => {
+            const name = category.name ?? category.Name ?? "";
+            const slug = category.slug ?? category.Slug ?? "";
+            const mediaId = category.mediaId ?? category.MediaId;
+            const image =
+              category.imageUrl ??
+              category.ImageUrl ??
+              (mediaId ? `/api/Media/${mediaId}` : "");
+
+            return (
             <a
-              href={`/products?category=${category.slug}`}
-              key={category.slug}
+              href={`/products?category=${slug}`}
+              key={slug || category.id || category.Id || name}
               className="group relative aspect-[0.95] overflow-hidden rounded-md bg-[#eae0d4] sm:aspect-[1.05]"
             >
-              <img
-                src={category.image}
-                alt={category.name}
-                loading="lazy"
+              <RemoteImage
+                src={image}
+                alt={name}
                 className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent" />
               <div className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-2 text-white sm:inset-x-4 sm:bottom-4">
                 <h3 className="font-serif text-lg sm:text-xl">
-                  {category.name}
+                  {name}
                 </h3>
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/80 transition group-hover:bg-white group-hover:text-[#172923]">
                   <ArrowUpRight size={15} />
                 </span>
               </div>
             </a>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -373,10 +390,9 @@ export default function StoreHome() {
               >
                 <div className="relative aspect-[1.15] overflow-hidden bg-[#f1e9df]">
                   <a href={`/products/${product.id}`}>
-                    <img
+                    <RemoteImage
                       src={product.image}
                       alt={product.name}
-                      loading="lazy"
                       className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                     />
                   </a>
@@ -414,21 +430,23 @@ export default function StoreHome() {
                     {formatPrice(product.price)}
                   </p>
 
-                  <div className="mt-2 flex items-center gap-1">
-                    <span className="flex items-center gap-0.5 text-[#e6a83c]">
-                      {Array.from({ length: 5 }, (_, index) => (
-                        <Star
-                          key={index}
-                          size={11}
-                          fill="currentColor"
-                          strokeWidth={1}
-                        />
-                      ))}
-                    </span>
-                    <span className="text-[9px] text-[#77766f]">
-                      ({product.rating})
-                    </span>
-                  </div>
+                  {product.rating != null && (
+                    <div className="mt-2 flex items-center gap-1">
+                      <span className="flex items-center gap-0.5 text-[#e6a83c]">
+                        {Array.from({ length: 5 }, (_, index) => (
+                          <Star
+                            key={index}
+                            size={11}
+                            fill="currentColor"
+                            strokeWidth={1}
+                          />
+                        ))}
+                      </span>
+                      <span className="text-[9px] text-[#77766f]">
+                        ({product.rating})
+                      </span>
+                    </div>
+                  )}
 
                   <button
                     onClick={() => addToCart(product)}

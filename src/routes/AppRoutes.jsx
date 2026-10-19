@@ -27,6 +27,7 @@ import StoreCheckout from '../pages/store/Checkout'
 import StoreProductDetails from '../pages/store/ProductDetails'
 import StoreCollections from '../pages/store/Collections'
 import StoreContact from '../pages/store/Contact'
+import StoreShipping from '../pages/store/Shipping'
 import { loadAdminAuth, clearAdminAuth, refreshToken, saveAdminAuth } from '../services/authapi'
 import { useEffect, useState } from 'react'
 
@@ -87,6 +88,8 @@ export default function AppRoutes() {
           <Route index element={<StoreHome />} />
           <Route path="about" element={<StoreAbout />} />
           <Route path="contact" element={<StoreContact />} />
+          <Route path="shipping-policy" element={<StoreShipping />} />
+          <Route path="shipping" element={<Navigate to="/shipping-policy" replace />} />
           <Route path="login" element={<StoreLogin />} />
           <Route path="register" element={<StoreRegister />} />
           <Route path="manage-profile" element={<ManageProfile />}>
@@ -106,6 +109,8 @@ export default function AppRoutes() {
           <Route path="products" element={<StoreProducts />} />
           <Route path="collections" element={<StoreCollections />} />
           <Route path="contact" element={<Navigate to="/contact" replace />} />
+          <Route path="shipping" element={<Navigate to="/shipping-policy" replace />} />
+          <Route path="shipping-policy" element={<Navigate to="/shipping-policy" replace />} />
           <Route path="products/:id" element={<StoreProductDetails />} />
           <Route path="cart" element={<StoreCart />} />
           <Route path="checkout" element={<StoreCheckout />} />

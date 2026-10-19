@@ -1,5 +1,5 @@
 import React from 'react'
-import { fetchMediaBlob } from '../../../services/mediaapi'
+import { fetchMediaBlob } from '../../services/mediaapi'
 
 export default function RemoteImage({ src, alt = '', className = '' }) {
   const [url, setUrl] = React.useState('')
