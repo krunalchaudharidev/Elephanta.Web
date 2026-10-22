@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { getCategories, searchProducts } from "../../services/productapi";
+import RemoteImage from "../../components/store/RemoteImage";
 import {
   Search,
   Heart,
@@ -11,124 +13,6 @@ import {
   ArrowUpDown,
   RotateCcw,
 } from "lucide-react";
-
-const categories = ["All Jewellery", "Bangles", "Rings", "Earrings", "Necklaces"];
-const metalTypes = ["Gold Plated", "Silver", "Rose Gold", "Kundan"];
-
-const products = [
-  {
-    id: 1,
-    name: "Royal Kundan Bridal Necklace",
-    category: "Necklaces",
-    metal: "Kundan",
-    price: 20200,
-    oldPrice: 24500,
-    rating: 4.8,
-    reviews: 124,
-    isNew: true,
-    inStock: true,
-    image:
-      "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=700&q=85",
-  },
-  {
-    id: 2,
-    name: "Pearl Drop Statement Earrings",
-    category: "Earrings",
-    metal: "Gold Plated",
-    price: 2200,
-    oldPrice: 2800,
-    rating: 4.7,
-    reviews: 86,
-    isNew: true,
-    inStock: true,
-    image:
-      "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=700&q=85",
-  },
-  {
-    id: 3,
-    name: "Elegant Solitaire Crystal Ring",
-    category: "Rings",
-    metal: "Silver",
-    price: 4000,
-    oldPrice: 4800,
-    rating: 4.9,
-    reviews: 210,
-    isNew: false,
-    inStock: true,
-    image:
-      "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=700&q=85",
-  },
-  {
-    id: 4,
-    name: "Traditional Gold Plated Bangles",
-    category: "Bangles",
-    metal: "Gold Plated",
-    price: 900,
-    oldPrice: 1200,
-    rating: 4.6,
-    reviews: 72,
-    isNew: false,
-    inStock: true,
-    image:
-      "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=700&q=85",
-  },
-  {
-    id: 5,
-    name: "Classic Everyday Gold Necklace",
-    category: "Necklaces",
-    metal: "Rose Gold",
-    price: 3500,
-    oldPrice: 4200,
-    rating: 4.5,
-    reviews: 64,
-    isNew: false,
-    inStock: true,
-    image:
-      "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=700&q=85",
-  },
-  {
-    id: 6,
-    name: "Floral Antique Earrings",
-    category: "Earrings",
-    metal: "Kundan",
-    price: 1800,
-    oldPrice: 2300,
-    rating: 4.8,
-    reviews: 95,
-    isNew: true,
-    inStock: true,
-    image:
-      "https://images.unsplash.com/photo-1630019852942-f89202989a59?auto=format&fit=crop&w=700&q=85",
-  },
-  {
-    id: 7,
-    name: "Minimalist Silver Band Ring",
-    category: "Rings",
-    metal: "Silver",
-    price: 1500,
-    oldPrice: null,
-    rating: 4.4,
-    reviews: 48,
-    isNew: false,
-    inStock: false,
-    image:
-      "https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&w=700&q=85",
-  },
-  {
-    id: 8,
-    name: "Premium Designer Kada Bangles",
-    category: "Bangles",
-    metal: "Rose Gold",
-    price: 5200,
-    oldPrice: 6500,
-    rating: 4.7,
-    reviews: 113,
-    isNew: false,
-    inStock: true,
-    image:
-      "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=700&q=85",
-  },
-];
 
 const formatPrice = (price) =>
   new Intl.NumberFormat("en-IN", {
@@ -165,19 +49,162 @@ function CheckOption({ label, checked, onChange, count }) {
 }
 
 export default function ProductListing() {
+  const [products, setProducts] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState("");
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState([]);
-  const [selectedMetals, setSelectedMetals] = useState([]);
+  const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(25000);
   const [minRating, setMinRating] = useState(0);
   const [inStockOnly, setInStockOnly] = useState(false);
-  const [newArrivalsOnly, setNewArrivalsOnly] = useState(false);
   const [sortBy, setSortBy] = useState("featured");
   const [search, setSearch] = useState("");
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize] = useState(12);
+  const [totalCount, setTotalCount] = useState(0);
   const [wishlist, setWishlist] = useState([]);
   const [cart, setCart] = useState([]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCategories() {
+      try {
+        const response = await getCategories(1, 1000, undefined, true, "nameasc");
+        const items = response?.items ?? response?.Items ?? [];
+        if (!cancelled) {
+          setCategories(
+            items
+              .map((category) => {
+                const name = category.name ?? category.Name ?? "";
+                const id = category.id ?? category.Id;
+                return {
+                  id,
+                  name: typeof name === "string" ? name.trim() : "",
+                  count:
+                    category.productCount ??
+                    category.ProductCount ??
+                    0,
+                };
+              })
+              .filter((category) => category.id && category.name)
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setCategoriesError(error.message || "Unable to load categories.");
+        }
+      } finally {
+        if (!cancelled) setCategoriesLoading(false);
+      }
+    }
+
+    loadCategories();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const timeoutId = window.setTimeout(async () => {
+      setProductsLoading(true);
+      setProductsError("");
+      try {
+        const response = await searchProducts({
+          name: search.trim() || undefined,
+          minPrice: minPrice > 0 ? minPrice : undefined,
+          maxPrice: maxPrice < 25000 ? maxPrice : undefined,
+          categoryIds: selectedCategories,
+          sort: sortBy,
+          minRating: minRating || undefined,
+          isStockAvailable: inStockOnly ? true : undefined,
+          pageNumber,
+          pageSize,
+        });
+        const items = response?.items ?? response?.Items ?? [];
+        const mappedProducts = items.map((item) => {
+          const imageIds = item.imageIds ?? item.ImageIds ?? [];
+          const primaryImageId = item.primaryImageId ?? item.PrimaryImageId;
+          const imageId = primaryImageId
+            ? imageIds.find((id) => String(id) === String(primaryImageId)) ??
+              imageIds[0]
+            : imageIds[0];
+          const rawStockQuantity =
+            item.stockQuantity ?? item.StockQuantity ?? 0;
+          const stockQuantity = Number.isFinite(Number(rawStockQuantity))
+            ? Number(rawStockQuantity)
+            : 0;
+          const compareAtPrice =
+            item.compareAtPrice ?? item.CompareAtPrice ?? null;
+
+          return {
+            ...item,
+            id: item.id ?? item.Id,
+            name: item.name ?? item.Name ?? "",
+            category:
+              item.categoryName ??
+              item.CategoryName ??
+              (typeof item.category === "string" ? item.category : undefined) ??
+              (typeof item.Category === "string" ? item.Category : undefined) ??
+              item.category?.name ??
+              item.Category?.Name ??
+              "",
+            metal: item.metal ?? item.Metal ?? item.material ?? item.Material ?? "",
+            price: item.price ?? item.Price ?? 0,
+            compareAtPrice,
+            rating: item.averageRating ?? item.AverageRating ?? 0,
+            reviews: item.reviewCount ?? item.ReviewCount ?? 0,
+            stockQuantity,
+            inStock: stockQuantity > 0,
+            isFeatured: item.isFeatured ?? item.IsFeatured ?? false,
+            image:
+              item.imageUrl ??
+              item.ImageUrl ??
+              (imageId ? `/api/Media/${imageId}` : ""),
+          };
+        });
+
+        if (!cancelled) {
+          setProducts(mappedProducts);
+          setTotalCount(
+            response?.totalCount ?? response?.TotalCount ?? mappedProducts.length
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setProducts([]);
+          setTotalCount(0);
+          setProductsError(error.message || "Unable to load products.");
+        }
+      } finally {
+        if (!cancelled) setProductsLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    search,
+    minPrice,
+    maxPrice,
+    selectedCategories,
+    sortBy,
+    minRating,
+    inStockOnly,
+    pageNumber,
+    pageSize,
+  ]);
+
   const toggleSelection = (value, selected, setSelected) => {
+    setPageNumber(1);
     setSelected(
       selected.includes(value)
         ? selected.filter((item) => item !== value)
@@ -187,74 +214,22 @@ export default function ProductListing() {
 
   const resetFilters = () => {
     setSelectedCategories([]);
-    setSelectedMetals([]);
+    setMinPrice(0);
     setMaxPrice(25000);
     setMinRating(0);
     setInStockOnly(false);
-    setNewArrivalsOnly(false);
     setSearch("");
     setSortBy("featured");
+    setPageNumber(1);
   };
-
-  const filteredProducts = useMemo(() => {
-    let result = products.filter((product) => {
-      const matchesCategory =
-        selectedCategories.length === 0 ||
-        selectedCategories.includes(product.category);
-
-      const matchesMetal =
-        selectedMetals.length === 0 ||
-        selectedMetals.includes(product.metal);
-
-      const matchesPrice = product.price <= maxPrice;
-      const matchesRating = product.rating >= minRating;
-      const matchesStock = !inStockOnly || product.inStock;
-      const matchesNew = !newArrivalsOnly || product.isNew;
-
-      const matchesSearch = `${product.name} ${product.category} ${product.metal}`
-        .toLowerCase()
-        .includes(search.toLowerCase().trim());
-
-      return (
-        matchesCategory &&
-        matchesMetal &&
-        matchesPrice &&
-        matchesRating &&
-        matchesStock &&
-        matchesNew &&
-        matchesSearch
-      );
-    });
-
-    if (sortBy === "price-low") {
-      result.sort((a, b) => a.price - b.price);
-    } else if (sortBy === "price-high") {
-      result.sort((a, b) => b.price - a.price);
-    } else if (sortBy === "rating") {
-      result.sort((a, b) => b.rating - a.rating);
-    } else if (sortBy === "newest") {
-      result.sort((a, b) => Number(b.isNew) - Number(a.isNew));
-    }
-
-    return result;
-  }, [
-    selectedCategories,
-    selectedMetals,
-    maxPrice,
-    minRating,
-    inStockOnly,
-    newArrivalsOnly,
-    search,
-    sortBy,
-  ]);
 
   const activeFilterCount =
     selectedCategories.length +
-    selectedMetals.length +
+    (minPrice > 0 ? 1 : 0) +
     (maxPrice < 25000 ? 1 : 0) +
     (minRating > 0 ? 1 : 0) +
-    Number(inStockOnly) +
-    Number(newArrivalsOnly);
+    Number(inStockOnly);
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   const toggleWishlist = (id) => {
     setWishlist((current) =>
@@ -282,70 +257,81 @@ export default function ProductListing() {
 
       <div>
         <FilterHeading>Categories</FilterHeading>
-        {categories.map((category) => (
+        {categoriesLoading && (
+          <p className="py-2 text-sm text-[#817a71]">Loading categories...</p>
+        )}
+        {categoriesError && (
+          <p role="alert" className="py-2 text-sm text-red-700">
+            {categoriesError}
+          </p>
+        )}
+        {categories
+          .slice(0, showAllCategories ? categories.length : 5)
+          .map(({ id, name, count }) => (
           <CheckOption
-            key={category}
-            label={category}
-            checked={selectedCategories.includes(category)}
+            key={id}
+            label={name}
+            checked={selectedCategories.includes(id)}
             onChange={() =>
               toggleSelection(
-                category,
+                id,
                 selectedCategories,
                 setSelectedCategories
               )
             }
-            count={
-              category === "All Jewellery"
-                ? products.length
-                : products.filter((p) => p.category === category).length
-            }
+            count={count}
           />
         ))}
+        {categories.length > 5 && (
+          <button
+            type="button"
+            onClick={() => setShowAllCategories((current) => !current)}
+            className="mt-2 text-xs text-[#a78051] underline underline-offset-4 hover:text-[#74512e]"
+          >
+            {showAllCategories ? "Show less" : "Show more"}
+          </button>
+        )}
       </div>
 
       <div className="border-t border-[#eee7df] pt-6">
         <FilterHeading>Price Range</FilterHeading>
-        <div className="mb-4 flex items-center justify-between text-xs text-[#777168]">
-          <span>₹0</span>
-          <span className="font-semibold text-[#172521]">
-            Up to {formatPrice(maxPrice)}
-          </span>
-        </div>
-        <input
-          type="range"
-          min="0"
-          max="25000"
-          step="500"
-          value={maxPrice}
-          onChange={(event) => setMaxPrice(Number(event.target.value))}
-          aria-label="Maximum price"
-          className="w-full cursor-pointer accent-[#a78051]"
-        />
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div className="rounded-md border border-[#e9e0d6] px-3 py-2">
-            <span className="block text-[10px] text-[#999086]">Minimum</span>
-            <span className="text-xs">₹0</span>
+            <label htmlFor="minimum-price" className="block text-[10px] text-[#999086]">Minimum</label>
+            <input
+              id="minimum-price"
+              type="number"
+              min="0"
+              max={maxPrice}
+              value={minPrice}
+              onChange={(event) => {
+                const value = Number(event.target.value);
+                setMinPrice(Math.min(maxPrice, Math.max(0, value)));
+                setPageNumber(1);
+              }}
+              className="mt-1 w-full bg-transparent text-xs outline-none"
+            />
           </div>
           <div className="rounded-md border border-[#e9e0d6] px-3 py-2">
-            <span className="block text-[10px] text-[#999086]">Maximum</span>
-            <span className="text-xs">{formatPrice(maxPrice)}</span>
+            <label htmlFor="maximum-price" className="block text-[10px] text-[#999086]">Maximum</label>
+            <input
+              id="maximum-price"
+              type="number"
+              min={minPrice}
+              max="25000"
+              value={maxPrice}
+              onChange={(event) => {
+                const value = Number(event.target.value);
+                setMaxPrice(Math.min(25000, Math.max(minPrice, value)));
+                setPageNumber(1);
+              }}
+              className="mt-1 w-full bg-transparent text-xs outline-none"
+            />
           </div>
         </div>
-      </div>
-
-      <div className="border-t border-[#eee7df] pt-6">
-        <FilterHeading>Material & Finish</FilterHeading>
-        {metalTypes.map((metal) => (
-          <CheckOption
-            key={metal}
-            label={metal}
-            checked={selectedMetals.includes(metal)}
-            onChange={() =>
-              toggleSelection(metal, selectedMetals, setSelectedMetals)
-            }
-            count={products.filter((p) => p.metal === metal).length}
-          />
-        ))}
+        <p className="mt-2 text-[10px] text-[#999086]">
+          Prices from {formatPrice(minPrice)} to {formatPrice(maxPrice)}
+        </p>
       </div>
 
       <div className="border-t border-[#eee7df] pt-6">
@@ -359,7 +345,10 @@ export default function ProductListing() {
               type="radio"
               name="rating"
               checked={minRating === rating}
-              onChange={() => setMinRating(rating)}
+              onChange={() => {
+                setMinRating(rating);
+                setPageNumber(1);
+              }}
               className="h-4 w-4 accent-[#a78051]"
             />
             <span className="flex items-center gap-1 text-sm text-[#625f59]">
@@ -369,7 +358,10 @@ export default function ProductListing() {
           </label>
         ))}
         <button
-          onClick={() => setMinRating(0)}
+          onClick={() => {
+            setMinRating(0);
+            setPageNumber(1);
+          }}
           className="mt-2 text-xs text-[#a78051] hover:underline"
         >
           Any rating
@@ -381,12 +373,10 @@ export default function ProductListing() {
         <CheckOption
           label="In stock only"
           checked={inStockOnly}
-          onChange={() => setInStockOnly(!inStockOnly)}
-        />
-        <CheckOption
-          label="New arrivals"
-          checked={newArrivalsOnly}
-          onChange={() => setNewArrivalsOnly(!newArrivalsOnly)}
+          onChange={() => {
+            setInStockOnly(!inStockOnly);
+            setPageNumber(1);
+          }}
         />
       </div>
 
@@ -394,7 +384,7 @@ export default function ProductListing() {
         onClick={() => setMobileFiltersOpen(false)}
         className="w-full rounded-md bg-[#172521] py-3 text-sm text-white transition hover:bg-[#a78051] lg:hidden"
       >
-        Show {filteredProducts.length} Products
+        Show {products.length} Products
       </button>
     </div>
   );
@@ -439,7 +429,7 @@ export default function ProductListing() {
           <div>
             <h2 className="font-serif text-2xl">Find Your Favourite</h2>
             <p className="mt-1 text-xs text-[#817a71]">
-              {filteredProducts.length} products to explore
+              {totalCount} products to explore
             </p>
           </div>
 
@@ -448,7 +438,10 @@ export default function ProductListing() {
               <Search size={16} className="shrink-0 text-[#918679]" />
               <input
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPageNumber(1);
+                }}
                 placeholder="Search jewellery..."
                 aria-label="Search products"
                 className="w-full min-w-0 bg-transparent text-xs outline-none"
@@ -472,15 +465,18 @@ export default function ProductListing() {
               <ArrowUpDown size={15} className="text-[#918679]" />
               <select
                 value={sortBy}
-                onChange={(event) => setSortBy(event.target.value)}
+                onChange={(event) => {
+                  setSortBy(event.target.value);
+                  setPageNumber(1);
+                }}
                 aria-label="Sort products"
                 className="max-w-40 bg-transparent text-xs outline-none"
               >
                 <option value="featured">Featured</option>
-                <option value="newest">Newest Arrivals</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="rating">Top Rated</option>
+                <option value="createdatasc">Newest Arrival</option>
+                <option value="priceasc">Price: Low to High</option>
+                <option value="pricedesc">Price: High to Low</option>
+                <option value="toprated">Top Rated</option>
               </select>
               <ChevronDown size={13} className="text-[#918679]" />
             </label>
@@ -522,33 +518,27 @@ export default function ProductListing() {
           {/* Product grid */}
           <section>
             <div className="mb-5 flex flex-wrap items-center gap-2">
-              {selectedCategories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() =>
-                    toggleSelection(
-                      category,
-                      selectedCategories,
-                      setSelectedCategories
-                    )
-                  }
-                  className="flex items-center gap-2 rounded-full border border-[#dfcbb3] bg-white px-3 py-1.5 text-[11px]"
-                >
-                  {category} <X size={12} />
-                </button>
-              ))}
-
-              {selectedMetals.map((metal) => (
-                <button
-                  key={metal}
-                  onClick={() =>
-                    toggleSelection(metal, selectedMetals, setSelectedMetals)
-                  }
-                  className="flex items-center gap-2 rounded-full border border-[#dfcbb3] bg-white px-3 py-1.5 text-[11px]"
-                >
-                  {metal} <X size={12} />
-                </button>
-              ))}
+              {selectedCategories.map((categoryId) => {
+                const category = categories.find(
+                  (item) => item.id === categoryId
+                );
+                if (!category) return null;
+                return (
+                  <button
+                    key={categoryId}
+                    onClick={() =>
+                      toggleSelection(
+                        categoryId,
+                        selectedCategories,
+                        setSelectedCategories
+                      )
+                    }
+                    className="flex items-center gap-2 rounded-full border border-[#dfcbb3] bg-white px-3 py-1.5 text-[11px]"
+                  >
+                    {category.name} <X size={12} />
+                  </button>
+                );
+              })}
 
               {activeFilterCount > 0 && (
                 <button
@@ -560,31 +550,41 @@ export default function ProductListing() {
               )}
             </div>
 
+            {productsError && (
+              <p role="alert" className="mb-5 rounded-md bg-red-50 p-4 text-sm text-red-700">
+                {productsError}
+              </p>
+            )}
+            {productsLoading && (
+              <p role="status" className="mb-5 text-sm text-[#817a71]">
+                Loading products...
+              </p>
+            )}
+
             <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-3 2xl:grid-cols-4">
-              {filteredProducts.map((product) => (
+              {products.map((product) => (
                 <article
                   key={product.id}
                   className="group min-w-0 overflow-hidden rounded-lg border border-[#eee7df] bg-white transition duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-[#342719]/5"
                 >
                   <div className="relative aspect-[0.86] overflow-hidden bg-[#f2ece5]">
-                    <img
+                    <RemoteImage
                       src={product.image}
                       alt={product.name}
-                      loading="lazy"
                       className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
                     />
 
-                    {product.isNew && (
+                    {product.isFeatured && (
                       <span className="absolute left-2 top-2 rounded-sm bg-white px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-[#8c6a42] sm:left-3 sm:top-3">
-                        New
+                        Featured
                       </span>
                     )}
 
-                    {product.oldPrice && (
+                    {product.compareAtPrice > product.price && (
                       <span className="absolute left-2 top-9 rounded-sm bg-[#a78051] px-2 py-1 text-[9px] font-medium text-white sm:left-3 sm:top-10">
                         {Math.round(
-                          ((product.oldPrice - product.price) /
-                            product.oldPrice) *
+                          ((product.compareAtPrice - product.price) /
+                            product.compareAtPrice) *
                             100
                         )}
                         % OFF
@@ -610,7 +610,7 @@ export default function ProductListing() {
                       />
                     </button>
 
-                    {!product.inStock && (
+                    {product.stockQuantity === 0 && (
                       <div className="absolute inset-x-0 bottom-0 bg-black/65 py-2 text-center text-[10px] uppercase tracking-widest text-white">
                         Out of stock
                       </div>
@@ -619,7 +619,7 @@ export default function ProductListing() {
 
                   <div className="p-3 sm:p-4">
                     <p className="mb-1 text-[9px] uppercase tracking-[0.12em] text-[#a78051]">
-                      {product.category} · {product.metal}
+                      {[product.category, product.metal].filter(Boolean).join(" · ")}
                     </p>
                     <h3 className="min-h-10 text-xs font-medium leading-5 text-[#262b27] sm:text-sm">
                       {product.name}
@@ -629,9 +629,9 @@ export default function ProductListing() {
                       <span className="text-sm font-semibold">
                         {formatPrice(product.price)}
                       </span>
-                      {product.oldPrice && (
+                      {product.compareAtPrice > product.price && (
                         <span className="text-[10px] text-[#9e968d] line-through">
-                          {formatPrice(product.oldPrice)}
+                          {formatPrice(product.compareAtPrice)}
                         </span>
                       )}
                     </div>
@@ -642,25 +642,25 @@ export default function ProductListing() {
                         className="fill-[#c99a48] text-[#c99a48]"
                       />
                       <span className="font-medium text-[#373b35]">
-                        {product.rating}
+                        {Number(product.rating).toFixed(1)}
                       </span>
                       <span>({product.reviews} reviews)</span>
                     </div>
 
                     <button
-                      disabled={!product.inStock}
+                      disabled={product.stockQuantity === 0}
                       onClick={() => addToCart(product)}
                       className="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-[#172521] px-2 py-3 text-[10px] font-medium text-white transition hover:bg-[#a78051] disabled:cursor-not-allowed disabled:bg-[#c8c4be] sm:text-xs"
                     >
                       <ShoppingCart size={14} />
-                      {product.inStock ? "Add to Cart" : "Unavailable"}
+                      {product.stockQuantity === 0 ? "Unavailable" : "Add to Cart"}
                     </button>
                   </div>
                 </article>
               ))}
             </div>
 
-            {filteredProducts.length === 0 && (
+            {!productsLoading && !productsError && products.length === 0 && (
               <div className="flex min-h-72 flex-col items-center justify-center rounded-lg border border-dashed border-[#ded3c6] bg-white px-5 text-center">
                 <Search size={32} className="mb-4 text-[#b6a28b]" />
                 <h3 className="font-serif text-2xl">No jewellery found</h3>
@@ -677,9 +677,31 @@ export default function ProductListing() {
               </div>
             )}
 
-            {filteredProducts.length > 0 && (
+            {!productsLoading && products.length > 0 && (
               <div className="mt-10 border-t border-[#eae3da] pt-5 text-center text-xs text-[#817a71]">
-                Showing {filteredProducts.length} of {products.length} products
+                <p>
+                  Showing {(pageNumber - 1) * pageSize + 1}–
+                  {(pageNumber - 1) * pageSize + products.length} of {totalCount} products
+                </p>
+                <div className="mt-4 flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    disabled={pageNumber === 1}
+                    onClick={() => setPageNumber((page) => Math.max(1, page - 1))}
+                    className="rounded-md border border-[#e5ddd3] bg-white px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Previous
+                  </button>
+                  <span>Page {pageNumber} of {totalPages}</span>
+                  <button
+                    type="button"
+                    disabled={pageNumber >= totalPages}
+                    onClick={() => setPageNumber((page) => Math.min(totalPages, page + 1))}
+                    className="rounded-md border border-[#e5ddd3] bg-white px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
           </section>

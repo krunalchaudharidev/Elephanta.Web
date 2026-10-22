@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
+import RemoteImage from "../../components/store/RemoteImage";
+import { getCategories } from "../../services/productapi";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -6,195 +8,74 @@ import {
   ChevronLeft,
   ChevronRight,
   Grid2X2,
-  Heart,
-  Search,
-  ShoppingCart,
-  UserRound,
 } from "lucide-react";
-
-const collections = [
-  {
-    id: 1,
-    name: "Bangles",
-    slug: "bangles",
-    subtitle: "Tradition on your wrist",
-    count: 24,
-    image:
-      "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=900&q=85",
-  },
-  {
-    id: 2,
-    name: "Rings",
-    slug: "rings",
-    subtitle: "Made for your moments",
-    count: 32,
-    image:
-      "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=900&q=85",
-  },
-  {
-    id: 3,
-    name: "Earrings",
-    slug: "earrings",
-    subtitle: "A little extra sparkle",
-    count: 28,
-    image:
-      "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=900&q=85",
-  },
-  {
-    id: 4,
-    name: "Necklaces",
-    slug: "necklaces",
-    subtitle: "Elegance in every detail",
-    count: 18,
-    image:
-      "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=900&q=85",
-  },
-  {
-    id: 5,
-    name: "Bridal Jewellery",
-    slug: "bridal-jewellery",
-    subtitle: "Your day, your forever",
-    count: 16,
-    image:
-      "https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=900&q=85",
-  },
-  {
-    id: 6,
-    name: "Pendants",
-    slug: "pendants",
-    subtitle: "Small details, lasting memories",
-    count: 21,
-    image:
-      "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=900&q=85",
-  },
-  {
-    id: 7,
-    name: "Anklets",
-    slug: "anklets",
-    subtitle: "Grace in every step",
-    count: 12,
-    image:
-      "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=900&q=85",
-  },
-  {
-    id: 8,
-    name: "Jewellery Sets",
-    slug: "jewellery-sets",
-    subtitle: "Beautifully paired",
-    count: 20,
-    image:
-      "https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=900&q=85",
-  },
-  {
-    id: 9,
-    name: "Pearl Jewellery",
-    slug: "pearl-jewellery",
-    subtitle: "Classic, never ordinary",
-    count: 14,
-    image:
-      "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=900&q=85",
-  },
-  {
-    id: 10,
-    name: "Gold Jewellery",
-    slug: "gold-jewellery",
-    subtitle: "A timeless golden glow",
-    count: 26,
-    image:
-      "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=900&q=85",
-  },
-  {
-    id: 11,
-    name: "Statement Jewellery",
-    slug: "statement-jewellery",
-    subtitle: "Made to stand out",
-    count: 15,
-    image:
-      "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=900&q=85",
-  },
-  {
-    id: 12,
-    name: "Everyday Jewellery",
-    slug: "everyday-jewellery",
-    subtitle: "Your everyday favourite",
-    count: 30,
-    image:
-      "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=900&q=85",
-  },
-  {
-    id: 13,
-    name: "Cocktail Rings",
-    slug: "cocktail-rings",
-    subtitle: "An unforgettable statement",
-    count: 11,
-    image:
-      "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=900&q=85",
-  },
-  {
-    id: 14,
-    name: "Traditional Jewellery",
-    slug: "traditional-jewellery",
-    subtitle: "Heritage reimagined",
-    count: 19,
-    image:
-      "https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=900&q=85",
-  },
-  {
-    id: 15,
-    name: "Gift Collections",
-    slug: "gift-collections",
-    subtitle: "Give something meaningful",
-    count: 17,
-    image:
-      "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=900&q=85",
-  },
-];
 
 const PAGE_SIZE = 6;
 
 export default function Collections() {
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("name-asc");
+  const [collections, setCollections] = useState([]);
+  const [sortBy, setSortBy] = useState("nameasc");
   const [currentPage, setCurrentPage] = useState(1);
-  const [wishlist, setWishlist] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const filteredCollections = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
+  useEffect(() => {
+    let cancelled = false;
 
-    const result = collections.filter((collection) =>
-      `${collection.name} ${collection.subtitle}`
-        .toLowerCase()
-        .includes(normalizedSearch)
-    );
-
-    if (sortBy === "name-asc") {
-      result.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (sortBy === "name-desc") {
-      result.sort((a, b) => b.name.localeCompare(a.name));
+    async function loadCategories() {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await getCategories(
+          currentPage,
+          PAGE_SIZE,
+          undefined,
+          true,
+          sortBy
+        );
+        const items = response?.items || response?.Items || [];
+        if (!cancelled) {
+          setCollections(
+            items.map((category) => {
+              const mediaId = category.mediaId ?? category.MediaId;
+              return {
+                ...category,
+                id: category.id ?? category.Id,
+                name: category.name ?? category.Name ?? "",
+                slug: category.slug ?? category.Slug ?? "",
+                subtitle: category.description ?? category.Description ?? "",
+                productCount:
+                  category.productCount ?? category.ProductCount ?? 0,
+                image:
+                  category.imageUrl ??
+                  category.ImageUrl ??
+                  (mediaId ? `/api/Media/${mediaId}` : ""),
+              };
+            })
+          );
+          setTotalCount(response?.totalCount ?? response?.TotalCount ?? 0);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setCollections([]);
+          setTotalCount(0);
+          setError(loadError.message || "Unable to load collections.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
 
-    return result;
-  }, [search, sortBy]);
+    loadCategories();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentPage, sortBy]);
 
-  const totalPages = Math.ceil(filteredCollections.length / PAGE_SIZE);
-
-  const currentCollections = filteredCollections.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  );
-
-  const changeSearch = (value) => {
-    setSearch(value);
-    setCurrentPage(1);
-  };
-
-  const toggleWishlist = (id) => {
-    setWishlist((previous) =>
-      previous.includes(id)
-        ? previous.filter((item) => item !== id)
-        : [...previous, id]
-    );
-  };
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const firstItem = totalCount === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const lastItem = Math.min(currentPage * PAGE_SIZE, totalCount);
 
   const getCollectionUrl = (slug) =>
     `/products?category=${encodeURIComponent(slug)}`;
@@ -257,13 +138,7 @@ export default function Collections() {
               every moment.
             </p>
             <p className="mt-2 text-[11px] text-[#93887b]">
-              Showing{" "}
-              {filteredCollections.length === 0
-                ? 0
-                : (currentPage - 1) * PAGE_SIZE + 1}
-              {"–"}
-              {Math.min(currentPage * PAGE_SIZE, filteredCollections.length)}{" "}
-              of {filteredCollections.length} collections
+              Showing {firstItem}–{lastItem} of {totalCount} collections
             </p>
           </div>
 
@@ -284,8 +159,8 @@ export default function Collections() {
                 }}
                 className="h-10 min-w-32 appearance-none rounded-md border border-[#e5ddd3] bg-white py-2 pl-3 pr-9 text-xs outline-none focus:border-[#a78051]"
               >
-                <option value="name-asc">Name: A–Z</option>
-                <option value="name-desc">Name: Z–A</option>
+                <option value="nameasc">Name: A–Z</option>
+                <option value="namedesc">Name: Z–A</option>
               </select>
               <ChevronDown
                 size={14}
@@ -297,9 +172,17 @@ export default function Collections() {
         </div>
 
         {/* Collection cards */}
-        {currentCollections.length > 0 ? (
+        {loading ? (
+          <div role="status" className="py-16 text-center text-sm text-[#817a71]">
+            Loading collections...
+          </div>
+        ) : error ? (
+          <div role="alert" className="py-16 text-center text-sm text-red-700">
+            {error}
+          </div>
+        ) : collections.length > 0 ? (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {currentCollections.map((collection) => (
+            {collections.map((collection) => (
               <article
                 key={collection.id}
                 className="group min-w-0"
@@ -308,10 +191,9 @@ export default function Collections() {
                   href={getCollectionUrl(collection.slug)}
                   className="relative block aspect-[1.25] overflow-hidden rounded-lg bg-[#eee5db]"
                 >
-                  <img
+                  <RemoteImage
                     src={collection.image}
                     alt={collection.name}
-                    loading="lazy"
                     className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
                   />
 
@@ -323,7 +205,7 @@ export default function Collections() {
                         {collection.name}
                       </span>
                       <span className="mt-1 block text-[10px] text-white/90 sm:text-[11px]">
-                        {collection.count} items
+                        {collection.productCount} items
                       </span>
                       <span className="mt-1 block text-[10px] text-white/80">
                         {collection.subtitle}
@@ -336,63 +218,14 @@ export default function Collections() {
                   </span>
                 </a>
 
-                <div className="flex items-center justify-between gap-3 px-1 pt-3">
-                  <div>
-                    <a
-                      href={getCollectionUrl(collection.slug)}
-                      className="text-sm font-medium transition hover:text-[#a78051]"
-                    >
-                      {collection.name}
-                    </a>
-                    <p className="mt-1 text-xs text-[#817a71]">
-                      {collection.subtitle}
-                    </p>
-                    <p className="mt-1 text-[10px] text-[#9b8c7a]">
-                      {collection.count} collections items
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => toggleWishlist(collection.id)}
-                    aria-label={
-                      wishlist.includes(collection.id)
-                        ? `Remove ${collection.name} from wishlist`
-                        : `Add ${collection.name} to wishlist`
-                    }
-                    aria-pressed={wishlist.includes(collection.id)}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#e9e1d7] bg-white transition hover:border-[#a78051]"
-                  >
-                    <Heart
-                      size={17}
-                      className={
-                        wishlist.includes(collection.id)
-                          ? "fill-[#a78051] text-[#a78051]"
-                          : "text-[#77766f]"
-                      }
-                    />
-                  </button>
-                </div>
               </article>
             ))}
           </div>
         ) : (
           <div className="rounded-lg border border-dashed border-[#d9cbbb] px-5 py-16 text-center">
-            <Search
-              size={28}
-              className="mx-auto text-[#a78051]"
-            />
             <h3 className="mt-4 font-serif text-2xl">
-              No collections found
+              No collections available
             </h3>
-            <p className="mt-2 text-sm text-[#817a71]">
-              Try a different search term.
-            </p>
-            <button
-              onClick={() => changeSearch("")}
-              className="mt-5 rounded-md bg-[#102722] px-5 py-3 text-xs text-white hover:bg-[#a78051]"
-            >
-              Clear Search
-            </button>
           </div>
         )}
 

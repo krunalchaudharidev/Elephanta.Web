@@ -167,7 +167,8 @@ export default function StoreHome() {
                 id: item.id ?? item.Id,
                 name: item.name ?? item.Name ?? "",
                 price: item.price ?? item.Price ?? 0,
-                rating: item.rating ?? item.Rating,
+                rating: item.averageRating ?? item.AverageRating,
+                reviewCount: item.reviewCount ?? item.ReviewCount,
                 image:
                   item.imageUrl ??
                   item.ImageUrl ??
@@ -433,17 +434,38 @@ export default function StoreHome() {
                   {product.rating != null && (
                     <div className="mt-2 flex items-center gap-1">
                       <span className="flex items-center gap-0.5 text-[#e6a83c]">
-                        {Array.from({ length: 5 }, (_, index) => (
-                          <Star
-                            key={index}
-                            size={11}
-                            fill="currentColor"
-                            strokeWidth={1}
-                          />
-                        ))}
+                        {Array.from({ length: 5 }, (_, index) => {
+                          const fillPercent = Math.max(
+                            0,
+                            Math.min(1, Number(product.rating) - index)
+                          ) * 100;
+
+                          return (
+                            <span
+                              key={index}
+                              className="relative inline-flex h-[11px] w-[11px]"
+                            >
+                              <Star
+                                size={11}
+                                className="text-[#d7cfc4]"
+                                strokeWidth={1}
+                              />
+                              <span
+                                className="absolute inset-y-0 left-0 overflow-hidden text-[#e6a83c]"
+                                style={{ width: `${fillPercent}%` }}
+                              >
+                                <Star
+                                  size={11}
+                                  fill="currentColor"
+                                  strokeWidth={1}
+                                />
+                              </span>
+                            </span>
+                          );
+                        })}
                       </span>
                       <span className="text-[9px] text-[#77766f]">
-                        ({product.rating})
+                        {Number(product.rating).toFixed(1)} ({product.reviewCount ?? 0} {product.reviewCount === 1 ? "review" : "reviews"})
                       </span>
                     </div>
                   )}

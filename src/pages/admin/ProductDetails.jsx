@@ -192,6 +192,7 @@ const ProductDetails = () => {
     price: 0,
     compareAtPrice: null,
     stockQuantity: 0,
+    reservedQuantity: 0,
     weight: 0,
     isFeatured: false,
     metaTitle: "",
@@ -312,6 +313,8 @@ const ProductDetails = () => {
           price: res?.price ?? res?.Price ?? 0,
           compareAtPrice: res?.compareAtPrice ?? res?.CompareAtPrice ?? null,
           stockQuantity: res?.stockQuantity ?? res?.StockQuantity ?? 0,
+          reservedQuantity: res?.reservedQuantity ?? res?.ReservedQuantity ?? 0,
+          soldQuantity: res?.soldQuantity ?? res?.SoldQuantity ?? 0,
           isFeatured: res?.isFeatured ?? res?.IsFeatured ?? false,
           // keep category name for display
           category: res?.categoryName ?? res?.CategoryName ?? '',
@@ -1184,14 +1187,18 @@ const ProductDetails = () => {
 
                         </FormField>
                         
-                        <div className="mt-3 grid grid-cols-2 gap-4">
+                        <div className="mt-3 grid grid-cols-3 gap-4">
+                          <div className="rounded-lg border border-slate-200 p-3">
+                            <p className="text-xs font-medium text-slate-500">Available</p>
+                            <p className="mt-1 text-sm font-semibold text-slate-900">{(product.stockQuantity ?? 0) - (product.reservedQuantity ?? 0)}</p>
+                          </div>
+                          <div className="rounded-lg border border-slate-200 p-3">
+                            <p className="text-xs font-medium text-slate-500">Reserved</p>
+                            <p className="mt-1 text-sm font-semibold text-slate-900">{product.reservedQuantity ?? 0}</p>
+                          </div>
                           <div className="rounded-lg border border-slate-200 p-3">
                             <p className="text-xs font-medium text-slate-500">Sold</p>
                             <p className="mt-1 text-sm font-semibold text-slate-900">{product.soldQuantity ?? 0}</p>
-                          </div>
-                          <div className="rounded-lg border border-slate-200 p-3">
-                            <p className="text-xs font-medium text-slate-500">Remaining</p>
-                            <p className="mt-1 text-sm font-semibold text-slate-900">{Math.max(0, (product.stockQuantity || 0) - (product.soldQuantity ?? 0))}</p>
                           </div>
                         </div>
 
