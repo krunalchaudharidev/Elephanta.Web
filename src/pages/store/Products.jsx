@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { getCategories, searchProducts } from "../../services/productapi";
 import RemoteImage from "../../components/store/RemoteImage";
 import {
@@ -49,6 +50,8 @@ function CheckOption({ label, checked, onChange, count }) {
 }
 
 export default function ProductListing() {
+  const [searchParams] = useSearchParams();
+  const categoryFromUrl = searchParams.get("category");
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
@@ -83,8 +86,10 @@ export default function ProductListing() {
               .map((category) => {
                 const name = category.name ?? category.Name ?? "";
                 const id = category.id ?? category.Id;
+                const slug = category.slug ?? category.Slug ?? "";
                 return {
                   id,
+                  slug,
                   name: typeof name === "string" ? name.trim() : "",
                   count:
                     category.productCount ??
@@ -111,6 +116,20 @@ export default function ProductListing() {
   }, []);
 
   useEffect(() => {
+    if (!categoryFromUrl || categories.length === 0) return;
+    const normalizedCategory = categoryFromUrl.toLowerCase();
+    const matchingCategory = categories.find(
+      (category) => [category.id, category.slug, category.name].some(
+        (value) => String(value ?? "").toLowerCase() === normalizedCategory
+      )
+    );
+    if (matchingCategory) {
+      setSelectedCategories([matchingCategory.id]);
+      setPageNumber(1);
+    }
+  }, [categoryFromUrl, categories]);
+
+  useEffect(() => {
     let cancelled = false;
     const timeoutId = window.setTimeout(async () => {
       setProductsLoading(true);
@@ -122,6 +141,7 @@ export default function ProductListing() {
           maxPrice: maxPrice < 25000 ? maxPrice : undefined,
           categoryIds: selectedCategories,
           sort: sortBy,
+          isActive: true,
           minRating: minRating || undefined,
           isStockAvailable: inStockOnly ? true : undefined,
           pageNumber,
@@ -568,11 +588,17 @@ export default function ProductListing() {
                   className="group min-w-0 overflow-hidden rounded-lg border border-[#eee7df] bg-white transition duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-[#342719]/5"
                 >
                   <div className="relative aspect-[0.86] overflow-hidden bg-[#f2ece5]">
-                    <RemoteImage
-                      src={product.image}
-                      alt={product.name}
-                      className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
-                    />
+                    <Link
+                      to={`/store/products/${encodeURIComponent(product.id)}`}
+                      aria-label={`View ${product.name}`}
+                      className="absolute inset-0"
+                    >
+                      <RemoteImage
+                        src={product.image}
+                        alt={product.name}
+                        className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                      />
+                    </Link>
 
                     {product.isFeatured && (
                       <span className="absolute left-2 top-2 rounded-sm bg-white px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-[#8c6a42] sm:left-3 sm:top-3">
@@ -617,7 +643,10 @@ export default function ProductListing() {
                     )}
                   </div>
 
-                  <div className="p-3 sm:p-4">
+                  <Link
+                    to={`/store/products/${encodeURIComponent(product.id)}`}
+                    className="block p-3 sm:p-4"
+                  >
                     <p className="mb-1 text-[9px] uppercase tracking-[0.12em] text-[#a78051]">
                       {[product.category, product.metal].filter(Boolean).join(" · ")}
                     </p>
@@ -646,7 +675,9 @@ export default function ProductListing() {
                       </span>
                       <span>({product.reviews} reviews)</span>
                     </div>
+                  </Link>
 
+                  <div className="px-3 pb-3 sm:px-4 sm:pb-4">
                     <button
                       disabled={product.stockQuantity === 0}
                       onClick={() => addToCart(product)}

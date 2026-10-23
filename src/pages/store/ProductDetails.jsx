@@ -1,4 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import RemoteImage from "../../components/store/RemoteImage";
+import { getProduct, getProductFaqs } from "../../services/productapi";
+import { getWebsiteSetting } from "../../services/websitesettingsapi";
 import {
   Heart,
   ShoppingCart,
@@ -11,48 +15,8 @@ import {
   Minus,
   Plus,
   Check,
-  Play,
   Gem,
 } from "lucide-react";
-
-const product = {
-  id: 1,
-  name: "Royal Kundan Bridal Necklace",
-  category: "Necklaces",
-  collection: "Kundan",
-  price: 20200,
-  oldPrice: 24500,
-  rating: 4.8,
-  reviewCount: 124,
-  description:
-    "A timeless masterpiece, this royal kundan necklace is crafted with intricate detailing and premium quality stones, making it the perfect choice for your special moments.",
-  images: [
-    {
-      src: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=1200&q=90",
-      alt: "Royal bridal necklace",
-    },
-    {
-      src: "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=1200&q=90",
-      alt: "Gold jewellery close-up",
-    },
-    {
-      src: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=1200&q=90",
-      alt: "Matching statement jewellery",
-    },
-    {
-      src: "https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=1200&q=90",
-      alt: "Jewellery craftsmanship",
-    },
-  ],
-  specifications: [
-    ["Product Type", "Bridal Necklace Set"],
-    ["Collection", "Royal Kundan"],
-    ["Metal Finish", "Gold Plated"],
-    ["Stone Type", "Kundan & Crystal"],
-    ["Occasion", "Wedding, Festive"],
-    ["Packaging", "Premium Gift Box"],
-  ],
-};
 
 const relatedProducts = [
   {
@@ -102,8 +66,6 @@ const relatedProducts = [
   },
 ];
 
-const metalFinishes = ["Gold Plated", "Silver", "Rose Gold", "Kundan"];
-
 const formatPrice = (price) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -111,18 +73,238 @@ const formatPrice = (price) =>
     maximumFractionDigits: 0,
   }).format(price);
 
+const allowedDescriptionTags = new Set([
+  "a",
+  "b",
+  "blockquote",
+  "br",
+  "code",
+  "div",
+  "em",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "hr",
+  "i",
+  "li",
+  "ol",
+  "p",
+  "pre",
+  "span",
+  "strong",
+  "sub",
+  "sup",
+  "u",
+  "ul",
+]);
+const descriptionTagsToRemove = new Set([
+  "embed",
+  "iframe",
+  "object",
+  "script",
+  "style",
+  "svg",
+]);
+
+function renderDescriptionHtml(html) {
+  const parsed = new DOMParser().parseFromString(html, "text/html");
+
+  function renderNode(node, key) {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+    if (node.nodeType !== Node.ELEMENT_NODE) return null;
+
+    const tagName = node.tagName.toLowerCase();
+    if (descriptionTagsToRemove.has(tagName)) return null;
+
+    const children = Array.from(node.childNodes).map((child, index) =>
+      renderNode(child, index)
+    );
+    if (!allowedDescriptionTags.has(tagName)) {
+      return <React.Fragment key={key}>{children}</React.Fragment>;
+    }
+
+    const props = { key };
+    if (tagName === "a") {
+      try {
+        const href = node.getAttribute("href");
+        if (href) {
+          const url = new URL(href, window.location.origin);
+          if (["http:", "https:", "mailto:", "tel:"].includes(url.protocol)) {
+            props.href = url.href;
+          }
+        }
+      } catch {
+        props.href = undefined;
+      }
+    }
+    return React.createElement(tagName, props, ...children);
+  }
+
+  return Array.from(parsed.body.childNodes).map((node, index) =>
+    renderNode(node, index)
+  );
+}
+
 export default function ProductDetails() {
+  const { id } = useParams();
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [activeImage, setActiveImage] = useState(0);
-  const [selectedMetal, setSelectedMetal] = useState("Kundan");
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeTab, setActiveTab] = useState("description");
-  const [cartCount, setCartCount] = useState(0);
   const [notification, setNotification] = useState("");
+  const [freeShippingOnOrdersAbove, setFreeShippingOnOrdersAbove] = useState(2000);
+  const [faqs, setFaqs] = useState([]);
+  const [faqsLoading, setFaqsLoading] = useState(true);
+  const [faqsError, setFaqsError] = useState("");
 
-  const discount = Math.round(
-    ((product.oldPrice - product.price) / product.oldPrice) * 100
-  );
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadWebsiteSettings() {
+      try {
+        const settings = await getWebsiteSetting();
+        const threshold =
+          settings?.freeShippingOnOrdersAbove ??
+          settings?.FreeShippingOnOrdersAbove;
+        if (!cancelled && threshold !== undefined && threshold !== null) {
+          const value = Number(threshold);
+          if (Number.isFinite(value) && value >= 0) {
+            setFreeShippingOnOrdersAbove(value);
+          }
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load website settings.", error);
+        }
+      }
+    }
+
+    loadWebsiteSettings();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!id) return undefined;
+    let cancelled = false;
+
+    async function loadFaqs() {
+      setFaqsLoading(true);
+      setFaqsError("");
+      try {
+        const response = await getProductFaqs(id);
+        const items = Array.isArray(response)
+          ? response
+          : response?.items ?? response?.Items ?? [];
+        if (!cancelled) {
+          setFaqs(
+            items
+              .map((faq) => ({
+                id: faq?.id ?? faq?.Id,
+                question: faq?.question ?? faq?.Question ?? "",
+                answer: faq?.answer ?? faq?.Answer ?? "",
+                isActive: faq?.isActive ?? faq?.IsActive ?? true,
+                displayOrder: faq?.displayOrder ?? faq?.DisplayOrder ?? 0,
+              }))
+              .filter((faq) => faq.isActive)
+              .sort((a, b) => a.displayOrder - b.displayOrder)
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setFaqsError(error?.message || "Unable to load FAQs.");
+        }
+      } finally {
+        if (!cancelled) setFaqsLoading(false);
+      }
+    }
+
+    loadFaqs();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProduct() {
+      setLoading(true);
+      setLoadError("");
+      setProduct(null);
+      setActiveImage(0);
+      setQuantity(1);
+      try {
+        const response = await getProduct(id);
+        const rawImageIds = response?.imageIds ?? response?.ImageIds ?? [];
+        const imageIds = Array.isArray(rawImageIds) ? rawImageIds : [];
+        const primaryImageId = response?.primaryImageId ?? response?.PrimaryImageId;
+        const orderedImageIds = primaryImageId
+          ? [
+              ...imageIds.filter((imageId) => String(imageId) === String(primaryImageId)),
+              ...imageIds.filter((imageId) => String(imageId) !== String(primaryImageId)),
+            ]
+          : imageIds;
+        const name = response?.name ?? response?.Name ?? "";
+        const price = Number(response?.price ?? response?.Price ?? 0);
+        const compareAtPrice = response?.compareAtPrice ?? response?.CompareAtPrice ?? null;
+        const stockQuantity = Number(response?.stockQuantity ?? response?.StockQuantity ?? 0);
+        const reservedQuantity = Number(response?.reservedQuantity ?? response?.ReservedQuantity ?? 0);
+
+        if (!cancelled) {
+          setProduct({
+            ...response,
+            id: response?.id ?? response?.Id ?? id,
+            name,
+            slug: response?.slug ?? response?.Slug ?? "",
+            sku: response?.sku ?? response?.SKU ?? "",
+            shortDescription: response?.shortDescription ?? response?.ShortDescription ?? "",
+            description: response?.description ?? response?.Description ?? "",
+            category: response?.categoryName ?? response?.CategoryName ?? "",
+            categoryId: response?.categoryId ?? response?.CategoryId ?? "",
+            price: Number.isFinite(price) ? price : 0,
+            compareAtPrice,
+            stockQuantity: Number.isFinite(stockQuantity) ? stockQuantity : 0,
+            reservedQuantity: Number.isFinite(reservedQuantity) ? reservedQuantity : 0,
+            isActive: response?.isActive ?? response?.IsActive ?? false,
+            isFeatured: response?.isFeatured ?? response?.IsFeatured ?? false,
+            isCategoryActive: response?.isCategoryActive ?? response?.IsCategoryActive ?? false,
+            reviewCount: response?.reviewCount ?? response?.ReviewCount ?? 0,
+            rating: response?.averageRating ?? response?.AverageRating ?? 0,
+            images: orderedImageIds.map((imageId) => ({
+              src: `/api/Media/${imageId}`,
+              alt: name,
+            })),
+          });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setLoadError(error?.message || "Unable to load product details.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadProduct();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const discount =
+    product?.compareAtPrice > product?.price
+      ? Math.round(
+          ((product.compareAtPrice - product.price) / product.compareAtPrice) * 100
+        )
+      : 0;
 
   const showNotification = (message) => {
     setNotification(message);
@@ -130,16 +312,37 @@ export default function ProductDetails() {
   };
 
   const handleAddToCart = () => {
-    setCartCount((count) => count + quantity);
+    if (!product || !product.isActive || !product.isCategoryActive || product.stockQuantity <= product.reservedQuantity) {
+      return;
+    }
     showNotification(`${quantity} item(s) added to your cart.`);
   };
 
   const changeImage = (direction) => {
     setActiveImage((current) => {
-      const total = product.images.length;
+      const total = product?.images.length ?? 0;
+      if (total === 0) return 0;
       return (current + direction + total) % total;
     });
   };
+
+  if (loading) {
+    return <div role="status" className="min-h-screen bg-[#fcfaf7] px-5 py-16 text-center text-[#777168]">Loading product...</div>;
+  }
+
+  if (loadError || !product) {
+    return (
+      <div className="min-h-screen bg-[#fcfaf7] px-5 py-16 text-center">
+        <p role="alert" className="text-sm text-red-700">
+          {loadError || "Product not found."}
+        </p>
+      </div>
+    );
+  }
+
+  const currentImage = product.images[activeImage];
+  const availableStock = Math.max(0, product.stockQuantity - product.reservedQuantity);
+  const isAvailable = product.isActive && product.isCategoryActive && availableStock > 0;
 
   return (
     <div className="min-h-screen bg-[#fcfaf7] text-[#172521]">
@@ -149,9 +352,12 @@ export default function ProductDetails() {
         <div className="flex flex-wrap items-center gap-2 text-xs text-[#93897e]">
           <a href="/" className="hover:text-[#a78051]">Home</a>
           <ChevronRight size={13} />
-          <a href="/products" className="hover:text-[#a78051]">Shop</a>
+          <a href="/store/products" className="hover:text-[#a78051]">Shop</a>
           <ChevronRight size={13} />
-          <a href="/products" className="hover:text-[#a78051]">
+          <a
+            href={`/store/products?category=${encodeURIComponent(product.categoryId)}`}
+            className="hover:text-[#a78051]"
+          >
             {product.category}
           </a>
           <ChevronRight size={13} />
@@ -167,7 +373,7 @@ export default function ProductDetails() {
             <div className="flex flex-col gap-3">
               {product.images.map((image, index) => (
                 <button
-                  key={image.src}
+                  key={`${image.src}-${index}`}
                   onClick={() => setActiveImage(index)}
                   aria-label={`View image ${index + 1}`}
                   className={`aspect-[0.8] overflow-hidden rounded-md border-2 transition ${
@@ -176,7 +382,7 @@ export default function ProductDetails() {
                       : "border-transparent hover:border-[#d7c5ad]"
                   }`}
                 >
-                  <img
+                  <RemoteImage
                     src={image.src}
                     alt={image.alt}
                     className="h-full w-full object-cover"
@@ -186,16 +392,29 @@ export default function ProductDetails() {
             </div>
 
             <div className="relative aspect-[0.86] overflow-hidden rounded-lg bg-[#f0e8de] sm:aspect-[0.95] lg:aspect-[0.88]">
-              <img
-                key={product.images[activeImage].src}
-                src={product.images[activeImage].src}
-                alt={product.images[activeImage].alt}
-                className="h-full w-full object-cover"
-              />
+              {currentImage ? (
+                <RemoteImage
+                  key={currentImage.src}
+                  src={currentImage.src}
+                  alt={currentImage.alt}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-gray-400">
+                  No image available
+                </div>
+              )}
 
-              <span className="absolute left-4 top-4 rounded-sm bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#8d6a43]">
-                Best Seller
-              </span>
+              {product.isFeatured && (
+                <span className="absolute left-4 top-4 rounded-sm bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#8d6a43]">
+                  Featured
+                </span>
+              )}
+              {!isAvailable && (
+                <span className="absolute inset-x-0 bottom-0 bg-black/65 py-2 text-center text-[10px] font-semibold uppercase tracking-widest text-white">
+                  Unavailable
+                </span>
+              )}
 
               <button
                 onClick={() => setIsFavorite(!isFavorite)}
@@ -212,26 +431,26 @@ export default function ProductDetails() {
                 />
               </button>
 
-              <button
+              {product.images.length > 1 && <button
                 onClick={() => changeImage(-1)}
                 aria-label="Previous product image"
                 className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 shadow-sm transition hover:bg-white sm:h-10 sm:w-10"
               >
                 <ChevronLeft size={20} />
-              </button>
+              </button>}
 
-              <button
+              {product.images.length > 1 && <button
                 onClick={() => changeImage(1)}
                 aria-label="Next product image"
                 className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 shadow-sm transition hover:bg-white sm:h-10 sm:w-10"
               >
                 <ChevronRight size={20} />
-              </button>
+              </button>}
 
-              <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">
+              {product.images.length > 1 && <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">
                 {product.images.map((image, index) => (
                   <button
-                    key={image.src}
+                    key={`${image.src}-${index}`}
                     aria-label={`Go to image ${index + 1}`}
                     onClick={() => setActiveImage(index)}
                     className={`h-1.5 rounded-full transition-all ${
@@ -241,28 +460,44 @@ export default function ProductDetails() {
                     }`}
                   />
                 ))}
-              </div>
+              </div>}
             </div>
           </div>
 
           {/* Product details */}
           <div className="py-1 lg:py-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#a78051]">
-              {product.category} <span className="mx-1.5">·</span>{" "}
-              {product.collection}
+              {product.category}
             </p>
 
             <h1 className="mt-3 font-serif text-3xl leading-tight sm:text-4xl lg:text-[42px]">
               {product.name}
             </h1>
+            {product.sku && (
+              <p className="mt-2 text-xs text-[#82796f]">SKU: {product.sku}</p>
+            )}
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              <div className="flex gap-0.5 text-[#c79643]">
-                {[1, 2, 3, 4, 5].map((item) => (
-                  <Star key={item} size={17} className="fill-current" />
-                ))}
+              <div className="flex gap-0.5" aria-label={`Rated ${product.rating} out of 5`}>
+                {[1, 2, 3, 4, 5].map((item) => {
+                  const fillPercent = Math.max(
+                    0,
+                    Math.min(1, Number(product.rating) - item + 1)
+                  ) * 100;
+                  return (
+                    <span key={item} className="relative inline-flex h-[17px] w-[17px]">
+                      <Star size={17} className="text-[#d7cfc4]" strokeWidth={1} />
+                      <span
+                        className="absolute inset-y-0 left-0 overflow-hidden text-[#c79643]"
+                        style={{ width: `${fillPercent}%` }}
+                      >
+                        <Star size={17} fill="currentColor" strokeWidth={1} />
+                      </span>
+                    </span>
+                  );
+                })}
               </div>
-              <span className="text-xs font-semibold">{product.rating}</span>
+              <span className="text-xs font-semibold">{Number(product.rating).toFixed(1)}</span>
               <a
                 href="#reviews"
                 onClick={() => setActiveTab("reviews")}
@@ -276,41 +511,28 @@ export default function ProductDetails() {
               <span className="text-2xl font-semibold tracking-tight">
                 {formatPrice(product.price)}
               </span>
-              <span className="text-sm text-[#9b948b] line-through">
-                {formatPrice(product.oldPrice)}
-              </span>
-              <span className="rounded-full bg-[#f5eadb] px-3 py-1 text-[11px] font-semibold text-[#986d3b]">
-                {discount}% OFF
-              </span>
+              {product.compareAtPrice > product.price && (
+                <span className="text-sm text-[#9b948b] line-through">
+                  {formatPrice(product.compareAtPrice)}
+                </span>
+              )}
+              {discount > 0 && (
+                <span className="rounded-full bg-[#f5eadb] px-3 py-1 text-[11px] font-semibold text-[#986d3b]">
+                  {discount}% OFF
+                </span>
+              )}
             </div>
 
-            <p className="mt-5 max-w-xl text-sm leading-7 text-[#777168]">
-              {product.description}
+            <div className="mt-5 max-w-xl text-sm leading-7 text-[#777168] [&_p]:my-2 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5">
+              {renderDescriptionHtml(
+                product.shortDescription ||
+                  product.description ||
+                  "No description available."
+              )}
+            </div>
+            <p className={`mt-3 text-xs font-medium ${isAvailable ? "text-green-700" : "text-red-700"}`}>
+              {isAvailable ? `${availableStock} in stock` : "Currently unavailable"}
             </p>
-
-            {/* Metal finish */}
-            <div className="mt-7">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-xs font-semibold">Metal Finish</h2>
-                <span className="text-xs text-[#a78051]">{selectedMetal}</span>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {metalFinishes.map((metal) => (
-                  <button
-                    key={metal}
-                    onClick={() => setSelectedMetal(metal)}
-                    className={`rounded-md border px-4 py-2.5 text-xs transition ${
-                      selectedMetal === metal
-                        ? "border-[#a78051] bg-[#f8f1e8] text-[#78532f]"
-                        : "border-[#e4ddd4] bg-white text-[#625f59] hover:border-[#b99b77]"
-                    }`}
-                  >
-                    {metal}
-                  </button>
-                ))}
-              </div>
-            </div>
 
             {/* Quantity */}
             <div className="mt-7">
@@ -318,7 +540,7 @@ export default function ProductDetails() {
               <div className="flex h-11 w-36 items-center justify-between rounded-md border border-[#e4ddd4] bg-white">
                 <button
                   aria-label="Decrease quantity"
-                  disabled={quantity <= 1}
+                  disabled={quantity <= 1 || !isAvailable}
                   onClick={() => setQuantity((current) => Math.max(1, current - 1))}
                   className="flex h-full w-10 items-center justify-center text-[#777168] transition hover:text-[#a78051] disabled:opacity-40"
                 >
@@ -329,15 +551,15 @@ export default function ProductDetails() {
 
                 <button
                   aria-label="Increase quantity"
-                  disabled={quantity >= 10}
-                  onClick={() => setQuantity((current) => Math.min(10, current + 1))}
+                  disabled={quantity >= Math.min(10, availableStock) || !isAvailable}
+                  onClick={() => setQuantity((current) => Math.min(10, availableStock, current + 1))}
                   className="flex h-full w-10 items-center justify-center text-[#777168] transition hover:text-[#a78051] disabled:opacity-40"
                 >
                   <Plus size={15} />
                 </button>
               </div>
               <p className="mt-2 text-[10px] text-[#91877b]">
-                Maximum 10 items per order.
+                Maximum {Math.min(10, availableStock)} items per order.
               </p>
             </div>
 
@@ -345,10 +567,11 @@ export default function ProductDetails() {
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <button
                 onClick={handleAddToCart}
-                className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#102722] px-5 py-3 text-xs font-medium text-white transition hover:bg-[#a78051]"
+                disabled={!isAvailable}
+                className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#102722] px-5 py-3 text-xs font-medium text-white transition hover:bg-[#a78051] disabled:cursor-not-allowed disabled:bg-gray-400"
               >
                 <ShoppingCart size={17} />
-                Add to Cart
+                {isAvailable ? "Add to Cart" : "Unavailable"}
               </button>
 
               <button
@@ -381,7 +604,7 @@ export default function ProductDetails() {
                   {
                     icon: Truck,
                     title: "Free Shipping",
-                    detail: "Orders above ₹2,000",
+                    detail: `Orders above ${formatPrice(freeShippingOnOrdersAbove)}`,
                   },
                   {
                     icon: RotateCcw,
@@ -413,8 +636,8 @@ export default function ProductDetails() {
           <div className="flex gap-7 overflow-x-auto border-b border-[#eae3da]">
             {[
               ["description", "Description"],
-              ["specifications", "Specifications"],
               ["reviews", `Reviews (${product.reviewCount})`],
+              ["faqs", "FAQs"],
             ].map(([key, label]) => (
               <button
                 key={key}
@@ -434,51 +657,13 @@ export default function ProductDetails() {
             <div>
               {activeTab === "description" && (
                 <div>
-                  <h2 className="font-serif text-2xl">
-                    Royal Elegance, Timeless Beauty
-                  </h2>
-                  <p className="mt-4 max-w-2xl text-sm leading-7 text-[#777168]">
-                    This exquisite kundan necklace is a celebration of
-                    traditional craftsmanship and modern elegance. Designed
-                    with precision, it features brilliant kundan stones set
-                    in a beautiful finish with delicate pearl drops. Perfect
-                    for weddings, festive occasions, and grand celebrations.
-                  </p>
-
-                  <ul className="mt-5 space-y-3">
-                    {[
-                      "Handcrafted design with intricate detailing",
-                      "Elegant finish for special occasions",
-                      "Designed to complement traditional outfits",
-                      "Comes in a premium presentation box",
-                    ].map((item) => (
-                      <li
-                        key={item}
-                        className="flex items-start gap-3 text-xs leading-5 text-[#625f59]"
-                      >
-                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#eee3d2] text-[#987344]">
-                          <Check size={11} />
-                        </span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {activeTab === "specifications" && (
-                <div>
-                  <h2 className="font-serif text-2xl">Product Specifications</h2>
-                  <div className="mt-5 divide-y divide-[#eee7df]">
-                    {product.specifications.map(([label, value]) => (
-                      <div
-                        key={label}
-                        className="grid grid-cols-2 gap-4 py-4 text-sm"
-                      >
-                        <span className="text-[#817a71]">{label}</span>
-                        <span className="font-medium">{value}</span>
-                      </div>
-                    ))}
+                  <h2 className="font-serif text-2xl">Product Description</h2>
+                  <div className="mt-4 max-w-2xl text-sm leading-7 text-[#777168] [&_h1]:my-4 [&_h1]:text-2xl [&_h2]:my-3 [&_h2]:text-xl [&_h3]:my-3 [&_h3]:text-lg [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-3 [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-6">
+                    {renderDescriptionHtml(
+                      product.description ||
+                        product.shortDescription ||
+                        "No description available."
+                    )}
                   </div>
                 </div>
               )}
@@ -510,6 +695,42 @@ export default function ProductDetails() {
                       Customer reviews will appear here when review data is
                       connected to your API.
                     </p>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "faqs" && (
+                <div>
+                  <h2 className="font-serif text-2xl">Frequently Asked Questions</h2>
+                  {faqsLoading && (
+                    <p role="status" className="mt-4 text-sm text-[#817a71]">
+                      Loading FAQs...
+                    </p>
+                  )}
+                  {faqsError && (
+                    <p role="alert" className="mt-4 text-sm text-red-700">
+                      Unable to load FAQs: {faqsError}
+                    </p>
+                  )}
+                  {!faqsLoading && !faqsError && faqs.length === 0 && (
+                    <p className="mt-4 text-sm text-[#817a71]">
+                      No FAQs available for this product.
+                    </p>
+                  )}
+                  <div className="mt-5 space-y-3">
+                    {faqs.map((faq, index) => (
+                      <details
+                        key={faq.id ?? `${faq.question}-${index}`}
+                        className="rounded-lg border border-[#eae3da] bg-white p-4"
+                      >
+                        <summary className="cursor-pointer text-sm font-medium text-[#172521]">
+                          {faq.question}
+                        </summary>
+                        <div className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#777168]">
+                          {renderDescriptionHtml(faq.answer || "No answer provided.")}
+                        </div>
+                      </details>
+                    ))}
                   </div>
                 </div>
               )}
@@ -568,7 +789,7 @@ export default function ProductDetails() {
               <h2 className="font-serif text-3xl">You May Also Like</h2>
             </div>
             <a
-              href="/products"
+              href="/store/products"
               className="text-xs text-[#8b6a45] hover:underline"
             >
               View All

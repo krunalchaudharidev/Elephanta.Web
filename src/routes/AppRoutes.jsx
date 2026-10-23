@@ -5,6 +5,7 @@ import AdminLogin from '../pages/admin/AdminLogin'
 import AdminDashboard from '../pages/admin/Dashboard'
 import AccountSettings from '../pages/admin/AccountSettings'
 import AdminCategories from '../pages/admin/Categories'
+import CustomerSupportRequests from '../pages/admin/CustomerSupportRequests'
 import AdminProducts from '../pages/admin/Products'
 import ProductDetails from '../pages/admin/ProductDetails'
 import AdminOffers from '../pages/admin/Offers'
@@ -121,6 +122,7 @@ export default function AppRoutes() {
           <Route index element={<Navigate to="/admin/account-settings" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="categories" element={<AdminCategories />} />
+          <Route path="customer-support" element={<CustomerSupportRequests />} />
           <Route path="products" element={<AdminProducts />} />
           <Route path="products/:id" element={<ProductDetails />} />
           <Route path="offers" element={<AdminOffers />} />

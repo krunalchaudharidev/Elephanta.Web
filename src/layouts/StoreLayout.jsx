@@ -1,10 +1,43 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Outlet, Link, NavLink } from 'react-router-dom'
 import { loadCustomerAuth } from '../services/authapi'
+import { getWebsiteSetting } from '../services/websitesettingsapi'
+
+function getExternalUrl(value) {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : ''
+  } catch {
+    return ''
+  }
+}
 
 export default function StoreLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [socialLinks, setSocialLinks] = useState({ instagramURL: '', facebookURL: '' })
   const accountPath = loadCustomerAuth()?.accessToken ? '/manage-profile' : '/login'
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadSocialLinks() {
+      try {
+        const settings = await getWebsiteSetting()
+        if (cancelled) return
+        setSocialLinks({
+          instagramURL: getExternalUrl(settings?.instagramURL ?? settings?.InstagramURL ?? ''),
+          facebookURL: getExternalUrl(settings?.facebookURL ?? settings?.FacebookURL ?? ''),
+        })
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to load website social links.', error)
+        }
+      }
+    }
+
+    loadSocialLinks()
+    return () => { cancelled = true }
+  }, [])
 
   return (
     <div className="min-h-screen bg-[#FDFCFB] text-[#2C2A29] font-sans antialiased">
@@ -32,7 +65,7 @@ export default function StoreLayout() {
               <input type="text" placeholder="Search for jewellery..." className="bg-transparent border-none text-xs ml-2 w-full focus:outline-none placeholder-[#AA9F96]" />
             </div>
             <Link to={accountPath} aria-label="Profile"><svg className="w-6 h-6 stroke-current" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></Link>
-            <button aria-label="Wishlist"><svg className="w-6 h-6 stroke-current" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg></button>
+            <Link to="/manage-profile/wishlist" aria-label="Wishlist"><svg className="w-6 h-6 stroke-current" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg></Link>
             <Link to="/store/cart" aria-label="Cart" className="relative"><svg className="w-6 h-6 stroke-current" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
               <span className="absolute -top-1 -right-1 bg-[#A37E58] text-[#FDFCFB] text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">0</span>
             </Link>
@@ -84,14 +117,18 @@ export default function StoreLayout() {
             <h5 className="font-semibold mb-2">Social Media</h5>
             <p className="text-sm text-white/70 mb-2">Follow us for new collections, behind-the-scenes and exclusive drops.</p>
             <div className="flex items-center gap-3">
-              <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm hover:text-white">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><path d="M17.5 6.5h.01"/></svg>
-                <span className="text-sm text-white/80">Instagram</span>
-              </a>
-              <a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm hover:text-white">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 2h-3a4 4 0 00-4 4v3H8v4h3v8h4v-8h3l1-4h-4V6a1 1 0 011-1h3z"/></svg>
-                <span className="text-sm text-white/80">Facebook</span>
-              </a>
+              {socialLinks.instagramURL && (
+                <a href={socialLinks.instagramURL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm hover:text-white">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><path d="M17.5 6.5h.01"/></svg>
+                  <span className="text-sm text-white/80">Instagram</span>
+                </a>
+              )}
+              {socialLinks.facebookURL && (
+                <a href={socialLinks.facebookURL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm hover:text-white">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 2h-3a4 4 0 00-4 4v3H8v4h3v8h4v-8h3l1-4h-4V6a1 1 0 011-1h3z"/></svg>
+                  <span className="text-sm text-white/80">Facebook</span>
+                </a>
+              )}
             </div>
           </div>
         </div>

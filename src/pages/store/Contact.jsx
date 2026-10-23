@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { createCustomerSupportRequest } from "../../services/customersupportapi";
+import { getWebsiteSetting } from "../../services/websitesettingsapi";
 import {
   ArrowRight,
   Clock,
@@ -11,31 +13,8 @@ import {
   Sparkles,
 } from "lucide-react";
 
-const contactDetails = [
-  {
-    icon: Phone,
-    title: "Call Us",
-    description: "Speak with our jewellery experts.",
-    value: "+91 98765 43210",
-    href: "tel:+919876543210",
-  },
-  {
-    icon: Mail,
-    title: "Email Us",
-    description: "We would love to hear from you.",
-    value: "support@elephanta.com",
-    href: "mailto:support@elephanta.com",
-  },
-  {
-    icon: Clock,
-    title: "Business Hours",
-    description: "Our team is available to help.",
-    value: "Mon – Sat, 10 AM – 7 PM",
-    href: null,
-  },
-];
-
 export default function ContactUs() {
+  const [contactInfo, setContactInfo] = useState({ phoneNo: "", email: "" });
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -45,6 +24,60 @@ export default function ContactUs() {
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadContactInfo() {
+      try {
+        const settings = await getWebsiteSetting();
+        if (!cancelled) {
+          setContactInfo({
+            phoneNo: String(settings?.phoneNo ?? settings?.PhoneNo ?? "").trim(),
+            email: String(settings?.email ?? settings?.Email ?? "").trim(),
+          });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load website contact information.", error);
+        }
+      }
+    }
+
+    loadContactInfo();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const contactDetails = [
+    {
+      icon: Phone,
+      title: "Call Us",
+      description: "Speak with our jewellery experts.",
+      value: contactInfo.phoneNo,
+      href: contactInfo.phoneNo
+        ? `tel:${contactInfo.phoneNo.replace(/[^\d+]/g, "")}`
+        : null,
+    },
+    {
+      icon: Mail,
+      title: "Email Us",
+      description: "We would love to hear from you.",
+      value: contactInfo.email,
+      href: contactInfo.email ? `mailto:${contactInfo.email}` : null,
+    },
+    {
+      icon: Clock,
+      title: "Business Hours",
+      description: "Our team is available to help.",
+      value: "Mon – Sat, 10 AM – 7 PM",
+      href: null,
+    },
+  ];
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -54,15 +87,67 @@ export default function ContactUs() {
       [name]: value,
     }));
 
+    setErrors((current) => ({ ...current, [name]: "" }));
     setSubmitted(false);
+    setSubmitError("");
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    // Connect this handler to your .NET Contact Us API.
-    console.log("Contact form submission:", form);
-    setSubmitted(true);
+    if (isSubmitting) return;
+
+    const nextErrors = {};
+    if (!form.name.trim()) {
+      nextErrors.name = "This field is required.";
+    }
+    if (!form.email.trim()) {
+      nextErrors.email = "This field is required.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      nextErrors.email = "Enter a valid email address.";
+    }
+    if (!form.message.trim()) {
+      nextErrors.message = "This field is required.";
+    } else if (form.message.trim().length < 10) {
+      nextErrors.message = "Please enter at least 10 characters.";
+    }
+
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      setSubmitted(false);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError("");
+    try {
+      await createCustomerSupportRequest({
+        name: form.name.trim(),
+        subject: form.subject,
+        message: form.message.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+      });
+      setForm({
+        name: "",
+        email: "",
+        phone: "",
+        subject: "Product Enquiry",
+        message: "",
+      });
+      setErrors({});
+      setSubmitted(true);
+    } catch (error) {
+      setSubmitted(false);
+      setSubmitError(
+        error?.body?.message ??
+          error?.body?.Message ??
+          error?.message ??
+          "Unable to send your message. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const inputClass =
@@ -133,7 +218,7 @@ export default function ContactUs() {
                   {item.description}
                 </p>
 
-                {item.href ? (
+                {item.value && item.href ? (
                   <a
                     href={item.href}
                     className="mt-4 inline-flex items-center gap-2 break-all text-sm font-medium text-[#91683f] hover:text-[#17251f]"
@@ -141,11 +226,11 @@ export default function ContactUs() {
                     {item.value}
                     <ArrowRight size={14} />
                   </a>
-                ) : (
+                ) : item.value ? (
                   <p className="mt-4 text-sm font-medium">
                     {item.value}
                   </p>
-                )}
+                ) : null}
               </div>
             );
           })}
@@ -169,7 +254,7 @@ export default function ContactUs() {
               Fill in the details below and tell us how we can assist you.
             </p>
 
-            <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+            <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <label
@@ -187,9 +272,16 @@ export default function ContactUs() {
                     autoComplete="name"
                     value={form.name}
                     onChange={handleChange}
+                    aria-invalid={Boolean(errors.name)}
+                    aria-describedby={errors.name ? "name-error" : undefined}
                     placeholder="Your full name"
                     className={inputClass}
                   />
+                  {errors.name && (
+                    <p id="name-error" role="alert" className="mt-1 text-xs text-red-600">
+                      {errors.name}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -208,9 +300,16 @@ export default function ContactUs() {
                     autoComplete="email"
                     value={form.email}
                     onChange={handleChange}
+                    aria-invalid={Boolean(errors.email)}
+                    aria-describedby={errors.email ? "email-error" : undefined}
                     placeholder="you@example.com"
                     className={inputClass}
                   />
+                  {errors.email && (
+                    <p id="email-error" role="alert" className="mt-1 text-xs text-red-600">
+                      {errors.email}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -275,9 +374,16 @@ export default function ContactUs() {
                   rows={5}
                   value={form.message}
                   onChange={handleChange}
+                  aria-invalid={Boolean(errors.message)}
+                  aria-describedby={errors.message ? "message-error" : undefined}
                   placeholder="Tell us a little about your enquiry..."
                   className={`${inputClass} resize-y`}
                 />
+                {errors.message && (
+                  <p id="message-error" role="alert" className="mt-1 text-xs text-red-600">
+                    {errors.message}
+                  </p>
+                )}
                 <p className="mt-1 text-right text-[10px] text-[#9a9289]">
                   {form.message.length}/3000
                 </p>
@@ -288,16 +394,22 @@ export default function ContactUs() {
                   role="status"
                   className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800"
                 >
-                  Your message has been validated. Connect the contact API
-                  to send it to our team.
+                  Your message has been sent successfully. Our team will be in touch.
                 </div>
+              )}
+
+              {submitError && (
+                <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {submitError}
+                </p>
               )}
 
               <button
                 type="submit"
+                disabled={isSubmitting}
                 className="inline-flex w-full items-center justify-center gap-3 rounded-md bg-[#142a23] px-6 py-4 text-sm font-medium text-white transition hover:bg-[#a77b4c] sm:w-auto"
               >
-                Send Message
+                {isSubmitting ? "Sending..." : "Send Message"}
                 <Send size={16} />
               </button>
 
@@ -350,13 +462,15 @@ export default function ContactUs() {
                     gift? Our team is happy to help you make the right
                     choice.
                   </p>
-                  <a
-                    href="mailto:support@elephanta.com"
-                    className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#91683f] hover:text-[#17251f]"
-                  >
-                    Talk to our team
-                    <ArrowRight size={15} />
-                  </a>
+                  {contactInfo.email && (
+                    <a
+                      href={`mailto:${contactInfo.email}`}
+                      className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#91683f] hover:text-[#17251f]"
+                    >
+                      Talk to our team
+                      <ArrowRight size={15} />
+                    </a>
+                  )}
                 </div>
               </div>
             </div>

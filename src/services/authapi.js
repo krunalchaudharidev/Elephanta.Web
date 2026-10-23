@@ -34,6 +34,39 @@ export async function login(email, password) {
   return res.json()
 }
 
+export async function register({
+  firstName,
+  middleName,
+  lastName,
+  email,
+  phoneNumber,
+  role,
+  password,
+}) {
+  const res = await fetch(`${BASE}/api/Auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      firstName,
+      middleName,
+      lastName,
+      email,
+      phoneNumber,
+      role,
+      password,
+    }),
+  })
+
+  if (!res.ok) {
+    const body = await res.text()
+    const err = new Error(`Registration failed: ${res.status} ${body}`)
+    err.status = res.status
+    throw err
+  }
+
+  return res.json()
+}
+
 export async function logout(refreshToken, scope) {
   const fetchWithAuth = scope === 'admin' ? fetchWithAdminAuth : fetchWithCustomerAuth
   const res = await fetchWithAuth('/api/Auth/logout', {
@@ -56,6 +89,7 @@ export {
 
 export default {
   login,
+  register,
   saveAdminAuth,
   loadAdminAuth,
   clearAdminAuth,

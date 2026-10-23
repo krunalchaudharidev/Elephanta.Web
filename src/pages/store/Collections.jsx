@@ -77,8 +77,8 @@ export default function Collections() {
   const firstItem = totalCount === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
   const lastItem = Math.min(currentPage * PAGE_SIZE, totalCount);
 
-  const getCollectionUrl = (slug) =>
-    `/products?category=${encodeURIComponent(slug)}`;
+  const getCollectionUrl = (id) =>
+    `/store/products?category=${encodeURIComponent(id)}`;
 
   return (
     <div className="min-h-screen bg-[#fcfaf7] text-[#172923]">
@@ -188,7 +188,7 @@ export default function Collections() {
                 className="group min-w-0"
               >
                 <a
-                  href={getCollectionUrl(collection.slug)}
+                  href={getCollectionUrl(collection.id)}
                   className="relative block aspect-[1.25] overflow-hidden rounded-lg bg-[#eee5db]"
                 >
                   <RemoteImage

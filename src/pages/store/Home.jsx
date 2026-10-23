@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import RemoteImage from "../../components/store/RemoteImage";
 import { getCategories, searchProducts } from "../../services/productapi";
+import { getWebsiteSetting } from "../../services/websitesettingsapi";
 import {
   ArrowLeft,
   ArrowRight,
@@ -114,12 +115,38 @@ function SectionHeading({ eyebrow, title, href, linkText }) {
 export default function StoreHome() {
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
+  const [freeShippingOnOrdersAbove, setFreeShippingOnOrdersAbove] = useState(2000);
   const [activeSlide, setActiveSlide] = useState(0);
   const [wishlist, setWishlist] = useState([]);
   const [cart, setCart] = useState([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadWebsiteSettings() {
+      try {
+        const response = await getWebsiteSetting();
+        const threshold =
+          response?.freeShippingOnOrdersAbove ??
+          response?.FreeShippingOnOrdersAbove;
+        if (!cancelled && threshold !== undefined && threshold !== null) {
+          setFreeShippingOnOrdersAbove(threshold);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load website settings.", error);
+        }
+      }
+    }
+
+    loadWebsiteSettings();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -167,6 +194,7 @@ export default function StoreHome() {
                 id: item.id ?? item.Id,
                 name: item.name ?? item.Name ?? "",
                 price: item.price ?? item.Price ?? 0,
+                compareAtPrice: item.compareAtPrice ?? item.CompareAtPrice ?? null,
                 rating: item.averageRating ?? item.AverageRating,
                 reviewCount: item.reviewCount ?? item.ReviewCount,
                 image:
@@ -320,7 +348,9 @@ export default function StoreHome() {
                   {title}
                 </h3>
                 <p className="mt-1 text-[9px] text-[#77766f] sm:text-[10px]">
-                  {description}
+                  {title === "FREE SHIPPING"
+                    ? `On orders above ${formatPrice(freeShippingOnOrdersAbove)}`
+                    : description}
                 </p>
               </div>
             </div>
@@ -340,7 +370,7 @@ export default function StoreHome() {
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {categories.map((category) => {
             const name = category.name ?? category.Name ?? "";
-            const slug = category.slug ?? category.Slug ?? "";
+            const categoryId = category.id ?? category.Id;
             const mediaId = category.mediaId ?? category.MediaId;
             const image =
               category.imageUrl ??
@@ -349,8 +379,8 @@ export default function StoreHome() {
 
             return (
             <a
-              href={`/products?category=${slug}`}
-              key={slug || category.id || category.Id || name}
+              href={`/store/products?category=${encodeURIComponent(categoryId ?? "")}`}
+              key={categoryId || name}
               className="group relative aspect-[0.95] overflow-hidden rounded-md bg-[#eae0d4] sm:aspect-[1.05]"
             >
               <RemoteImage
@@ -427,9 +457,16 @@ export default function StoreHome() {
                     {product.name}
                   </a>
 
-                  <p className="mt-1.5 text-xs font-semibold sm:text-sm">
-                    {formatPrice(product.price)}
-                  </p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold sm:text-sm">
+                      {formatPrice(product.price)}
+                    </span>
+                    {product.compareAtPrice > product.price && (
+                      <span className="text-[10px] text-[#9e968d] line-through">
+                        {formatPrice(product.compareAtPrice)}
+                      </span>
+                    )}
+                  </div>
 
                   {product.rating != null && (
                     <div className="mt-2 flex items-center gap-1">

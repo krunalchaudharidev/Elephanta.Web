@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Phone, ShieldCheck } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { register, saveCustomerAuth } from '../../services/authapi'
 
 const inputClass = 'h-11 w-full rounded-md border border-[#DEDCD6] bg-white px-3.5 text-sm text-[#183129] outline-none transition placeholder:text-[#A0A49F] focus:border-[#A77B4C] focus:ring-2 focus:ring-[#A77B4C]/10'
 const labelClass = 'mb-1.5 block text-xs font-medium text-[#34423B]'
@@ -10,40 +11,109 @@ export default function StoreRegister() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [error, setError] = useState('')
+  const [errors, setErrors] = useState({})
+  const [isLoading, setIsLoading] = useState(false)
   const [form, setForm] = useState({
     firstName: '',
+    middleName: '',
     lastName: '',
     email: '',
     phoneNumber: '',
     password: '',
     confirmPassword: '',
   })
+  const navigate = useNavigate()
 
   function handleChange(event) {
-    setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
+    const { name, value } = event.target
+    setForm((current) => ({ ...current, [name]: value }))
+    setErrors((current) => ({
+      ...current,
+      [name]: '',
+      ...(name === 'password' ? { confirmPassword: '' } : {}),
+    }))
     setError('')
   }
 
-  function handleSubmit(event) {
+  function getRegistrationError(error) {
+    const rawMessage = error?.body ?? error?.message ?? ''
+    if (typeof rawMessage === 'string') {
+      const jsonStart = rawMessage.indexOf('{')
+      if (jsonStart >= 0) {
+        try {
+          const body = JSON.parse(rawMessage.slice(jsonStart))
+          const validationErrors = body?.errors ?? body?.Errors
+          if (validationErrors) {
+            return Object.values(validationErrors).flat().join(' ')
+          }
+          return body?.message ?? body?.Message ?? body?.title ?? body?.Title ?? rawMessage
+        } catch {
+          return rawMessage
+        }
+      }
+      return rawMessage
+    }
+    return rawMessage?.message ?? rawMessage?.Message ?? 'Unable to create your account. Please try again.'
+  }
+
+  async function handleSubmit(event) {
     event.preventDefault()
     setError('')
 
-    if (form.password.length < 8) {
-      setError('Password must contain at least 8 characters.')
-      return
+    const nextErrors = {}
+    if (!form.firstName.trim()) nextErrors.firstName = 'This field is required.'
+    if (!form.lastName.trim()) nextErrors.lastName = 'This field is required.'
+    if (!form.email.trim()) {
+      nextErrors.email = 'This field is required.'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      nextErrors.email = 'Enter a valid email address.'
     }
-
-    if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match.')
-      return
+    if (!form.phoneNumber.trim()) {
+      nextErrors.phoneNumber = 'This field is required.'
+    } else if (!/^\+?[0-9\- ]{7,20}$/.test(form.phoneNumber.trim())) {
+      nextErrors.phoneNumber = 'Enter a valid phone number.'
     }
-
+    if (!form.password) {
+      nextErrors.password = 'This field is required.'
+    } else if (form.password.length < 8) {
+      nextErrors.password = 'Password must contain at least 8 characters.'
+    }
+    if (!form.confirmPassword) {
+      nextErrors.confirmPassword = 'This field is required.'
+    } else if (form.password !== form.confirmPassword) {
+      nextErrors.confirmPassword = 'Passwords do not match.'
+    }
     if (!acceptedTerms) {
-      setError('Please accept the Terms & Conditions to continue.')
-      return
+      nextErrors.acceptedTerms = 'Please accept the Terms & Conditions to continue.'
     }
+    setErrors(nextErrors)
+    if (Object.keys(nextErrors).length > 0) return
 
-    setError('Account registration is not available yet. Please try again later.')
+    setIsLoading(true)
+    try {
+      const response = await register({
+        firstName: form.firstName.trim(),
+        middleName: form.middleName.trim(),
+        lastName: form.lastName.trim(),
+        email: form.email.trim(),
+        phoneNumber: form.phoneNumber.trim(),
+        role: 'Customer',
+        password: form.password,
+      })
+      const accessToken = response?.accessToken ?? response?.AccessToken
+      const refreshToken = response?.refreshToken ?? response?.RefreshToken
+      const expiresAt = response?.expiresAt ?? response?.ExpiresAt
+      const user = response?.user ?? response?.User
+      if (!accessToken || !refreshToken || !user) {
+        throw new Error('Account was created, but automatic sign-in failed. Please sign in.')
+      }
+      saveCustomerAuth({ accessToken, refreshToken, expiresAt, user })
+      navigate('/', { replace: true })
+    } catch (registrationError) {
+      setError(getRegistrationError(registrationError))
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -68,15 +138,21 @@ export default function StoreRegister() {
             <div className="mx-auto mt-5 h-px w-12 bg-[#B89569]" />
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-3.5">
+          <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-3.5">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label htmlFor="register-firstName" className={labelClass}>First Name <span className="text-red-500">*</span></label>
-                <input id="register-firstName" name="firstName" type="text" autoComplete="given-name" placeholder="Enter first name" value={form.firstName} onChange={handleChange} required maxLength={100} className={inputClass} />
+                <input id="register-firstName" name="firstName" type="text" autoComplete="given-name" placeholder="Enter first name" value={form.firstName} onChange={handleChange} required maxLength={100} aria-invalid={Boolean(errors.firstName)} aria-describedby={errors.firstName ? 'register-firstName-error' : undefined} className={inputClass} />
+                {errors.firstName && <p id="register-firstName-error" role="alert" className="mt-1 text-xs text-red-600">{errors.firstName}</p>}
               </div>
               <div>
                 <label htmlFor="register-lastName" className={labelClass}>Last Name <span className="text-red-500">*</span></label>
-                <input id="register-lastName" name="lastName" type="text" autoComplete="family-name" placeholder="Enter last name" value={form.lastName} onChange={handleChange} required maxLength={100} className={inputClass} />
+                <input id="register-lastName" name="lastName" type="text" autoComplete="family-name" placeholder="Enter last name" value={form.lastName} onChange={handleChange} required maxLength={100} aria-invalid={Boolean(errors.lastName)} aria-describedby={errors.lastName ? 'register-lastName-error' : undefined} className={inputClass} />
+                {errors.lastName && <p id="register-lastName-error" role="alert" className="mt-1 text-xs text-red-600">{errors.lastName}</p>}
+              </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="register-middleName" className={labelClass}>Middle Name</label>
+                <input id="register-middleName" name="middleName" type="text" autoComplete="additional-name" placeholder="Enter middle name (optional)" value={form.middleName} onChange={handleChange} maxLength={100} className={inputClass} />
               </div>
             </div>
 
@@ -84,16 +160,18 @@ export default function StoreRegister() {
               <label htmlFor="register-email" className={labelClass}>Email Address <span className="text-red-500">*</span></label>
               <div className="relative">
                 <Mail size={17} strokeWidth={1.6} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8B948D]" />
-                <input id="register-email" name="email" type="email" autoComplete="email" placeholder="you@example.com" value={form.email} onChange={handleChange} required maxLength={254} className={`${inputClass} pl-10`} />
+                <input id="register-email" name="email" type="email" autoComplete="email" placeholder="you@example.com" value={form.email} onChange={handleChange} required maxLength={254} aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? 'register-email-error' : undefined} className={`${inputClass} pl-10`} />
               </div>
+              {errors.email && <p id="register-email-error" role="alert" className="mt-1 text-xs text-red-600">{errors.email}</p>}
             </div>
 
             <div>
               <label htmlFor="register-phoneNumber" className={labelClass}>Phone Number <span className="text-red-500">*</span></label>
               <div className="relative">
                 <Phone size={17} strokeWidth={1.6} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8B948D]" />
-                <input id="register-phoneNumber" name="phoneNumber" type="tel" autoComplete="tel" placeholder="Enter phone number" value={form.phoneNumber} onChange={handleChange} required maxLength={20} className={`${inputClass} pl-10`} />
+                <input id="register-phoneNumber" name="phoneNumber" type="tel" autoComplete="tel" placeholder="Enter phone number" value={form.phoneNumber} onChange={handleChange} required maxLength={20} aria-invalid={Boolean(errors.phoneNumber)} aria-describedby={errors.phoneNumber ? 'register-phoneNumber-error' : undefined} className={`${inputClass} pl-10`} />
               </div>
+              {errors.phoneNumber && <p id="register-phoneNumber-error" role="alert" className="mt-1 text-xs text-red-600">{errors.phoneNumber}</p>}
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -101,33 +179,37 @@ export default function StoreRegister() {
                 <label htmlFor="register-password" className={labelClass}>Password <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <LockKeyhole size={17} strokeWidth={1.6} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8B948D]" />
-                  <input id="register-password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" placeholder="Minimum 8 characters" value={form.password} onChange={handleChange} required minLength={8} className={`${inputClass} pl-10 pr-11`} />
+                  <input id="register-password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" placeholder="Minimum 8 characters" value={form.password} onChange={handleChange} required minLength={8} aria-invalid={Boolean(errors.password)} aria-describedby={errors.password ? 'register-password-error' : undefined} className={`${inputClass} pl-10 pr-11`} />
                   <button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'} title={showPassword ? 'Hide password' : 'Show password'} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[#7B8982] hover:text-[#A77B4C]">
                     {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                   </button>
                 </div>
+                {errors.password && <p id="register-password-error" role="alert" className="mt-1 text-xs text-red-600">{errors.password}</p>}
               </div>
               <div>
                 <label htmlFor="register-confirmPassword" className={labelClass}>Confirm Password <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <LockKeyhole size={17} strokeWidth={1.6} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8B948D]" />
-                  <input id="register-confirmPassword" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} autoComplete="new-password" placeholder="Re-enter password" value={form.confirmPassword} onChange={handleChange} required className={`${inputClass} pl-10 pr-11`} />
+                  <input id="register-confirmPassword" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} autoComplete="new-password" placeholder="Re-enter password" value={form.confirmPassword} onChange={handleChange} required aria-invalid={Boolean(errors.confirmPassword)} aria-describedby={errors.confirmPassword ? 'register-confirmPassword-error' : undefined} className={`${inputClass} pl-10 pr-11`} />
                   <button type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'} title={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[#7B8982] hover:text-[#A77B4C]">
                     {showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                   </button>
                 </div>
+                {errors.confirmPassword && <p id="register-confirmPassword-error" role="alert" className="mt-1 text-xs text-red-600">{errors.confirmPassword}</p>}
               </div>
             </div>
 
             <label className="flex cursor-pointer items-start gap-2.5 pt-1 text-xs leading-5 text-[#69736C]">
-              <input type="checkbox" checked={acceptedTerms} onChange={(event) => { setAcceptedTerms(event.target.checked); setError('') }} className="mt-1 h-4 w-4 shrink-0 accent-[#A77B4C]" />
+              <input type="checkbox" checked={acceptedTerms} onChange={(event) => { setAcceptedTerms(event.target.checked); setErrors((current) => ({ ...current, acceptedTerms: '' })); setError('') }} aria-invalid={Boolean(errors.acceptedTerms)} aria-describedby={errors.acceptedTerms ? 'register-terms-error' : undefined} className="mt-1 h-4 w-4 shrink-0 accent-[#A77B4C]" />
               <span>I agree to the <Link to="/terms" className="font-medium text-[#99683B] underline underline-offset-2">Terms &amp; Conditions</Link> and <Link to="/privacy-policy" className="font-medium text-[#99683B] underline underline-offset-2">Privacy Policy</Link>.</span>
             </label>
+            {errors.acceptedTerms && <p id="register-terms-error" role="alert" className="text-xs text-red-600">{errors.acceptedTerms}</p>}
 
             {error && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-xs leading-5 text-red-700">{error}</p>}
 
-            <button type="submit" className="group flex h-12 w-full items-center justify-center gap-3 rounded-md bg-[#102923] px-5 text-sm font-medium text-white transition duration-300 hover:bg-[#24483B]">
-              Create Account <ArrowRight size={17} className="transition-transform group-hover:translate-x-1" />
+            <button type="submit" disabled={isLoading} className="group flex h-12 w-full items-center justify-center gap-3 rounded-md bg-[#102923] px-5 text-sm font-medium text-white transition duration-300 hover:bg-[#24483B] disabled:cursor-not-allowed disabled:opacity-60">
+              {isLoading ? 'Creating account...' : 'Create Account'}
+              {!isLoading && <ArrowRight size={17} className="transition-transform group-hover:translate-x-1" />}
             </button>
           </form>
 
