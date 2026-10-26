@@ -2,7 +2,11 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import RemoteImage from "../../components/store/RemoteImage";
 import ProductReviews from "../../components/store/ProductReviews";
-import { getProduct, getProductFaqs } from "../../services/productapi";
+import YouMayAlsoLike from "../../components/store/YouMayAlsoLike";
+import {
+  getProduct,
+  getProductFaqs,
+} from "../../services/productapi";
 import { getWebsiteSetting } from "../../services/websitesettingsapi";
 import {
   Heart,
@@ -18,54 +22,6 @@ import {
   Check,
   Gem,
 } from "lucide-react";
-
-const relatedProducts = [
-  {
-    id: 2,
-    name: "Classic Everyday Gold Necklace",
-    price: 3500,
-    oldPrice: 4200,
-    rating: 4.5,
-    image:
-      "https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=600&q=85",
-  },
-  {
-    id: 3,
-    name: "Floral Antique Earrings",
-    price: 1800,
-    oldPrice: 2300,
-    rating: 4.8,
-    image:
-      "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=600&q=85",
-  },
-  {
-    id: 4,
-    name: "Elegant Solitaire Crystal Ring",
-    price: 4000,
-    oldPrice: 4800,
-    rating: 4.9,
-    image:
-      "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=600&q=85",
-  },
-  {
-    id: 5,
-    name: "Traditional Gold Plated Bangles",
-    price: 900,
-    oldPrice: 1200,
-    rating: 4.6,
-    image:
-      "https://images.unsplash.com/photo-1611652022419-a9419f74343d?auto=format&fit=crop&w=600&q=85",
-  },
-  {
-    id: 6,
-    name: "Pearl Drop Pendant Necklace",
-    price: 2800,
-    oldPrice: 3500,
-    rating: 4.7,
-    image:
-      "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=600&q=85",
-  },
-];
 
 const formatPrice = (price) =>
   new Intl.NumberFormat("en-IN", {
@@ -767,67 +723,7 @@ export default function ProductDetails() {
           </div>
         </section>
 
-        {/* Related products */}
-        <section className="mt-8 border-t border-[#eae3da] pt-8 sm:mt-12 sm:pt-10">
-          <div className="mb-6 flex items-end justify-between">
-            <div>
-              <p className="mb-2 text-[10px] uppercase tracking-[0.2em] text-[#a78051]">
-                Curated for you
-              </p>
-              <h2 className="font-serif text-3xl">You May Also Like</h2>
-            </div>
-            <a
-              href="/store/products"
-              className="text-xs text-[#8b6a45] hover:underline"
-            >
-              View All
-            </a>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-5">
-            {relatedProducts.map((item) => (
-              <article
-                key={item.id}
-                className="group overflow-hidden rounded-lg border border-[#eee7df] bg-white transition hover:-translate-y-1 hover:shadow-lg hover:shadow-[#342719]/5"
-              >
-                <a
-                  href={`/products/${item.id}`}
-                  className="block aspect-[0.9] overflow-hidden bg-[#f2ece5]"
-                >
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    loading="lazy"
-                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                  />
-                </a>
-                <div className="p-3 sm:p-4">
-                  <a
-                    href={`/products/${item.id}`}
-                    className="line-clamp-2 min-h-10 text-xs font-medium leading-5 hover:text-[#a78051]"
-                  >
-                    {item.name}
-                  </a>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold">
-                      {formatPrice(item.price)}
-                    </span>
-                    <span className="text-[10px] text-[#9b948b] line-through">
-                      {formatPrice(item.oldPrice)}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center gap-1 text-[10px] text-[#817a71]">
-                    <Star
-                      size={12}
-                      className="fill-[#c79643] text-[#c79643]"
-                    />
-                    {item.rating}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
+        <YouMayAlsoLike productId={id} />
       </main>
 
       {/* Notification */}

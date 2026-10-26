@@ -34,6 +34,11 @@ export async function getProduct(id) {
 	return apiGet(`/api/Product/products/${id}`)
 }
 
+export async function getYouMayAlsoLike(productId) {
+	if (!productId) throw new Error('productId required')
+	return apiGet(`/api/Product/products/${productId}/you-may-also-like`)
+}
+
 export async function createProductReview(productId, payload) {
 	if (!productId) throw new Error('productId required')
 	return customerApiPost(`/api/Product/products/${productId}/reviews`, payload)
