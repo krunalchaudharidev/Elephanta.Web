@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Outlet, Link, NavLink } from 'react-router-dom'
 import { loadCustomerAuth } from '../services/authapi'
 import { getWebsiteSetting } from '../services/websitesettingsapi'
+import { searchProducts } from '../services/productapi'
 
 function getExternalUrl(value) {
   try {
@@ -15,7 +16,59 @@ function getExternalUrl(value) {
 export default function StoreLayout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [socialLinks, setSocialLinks] = useState({ instagramURL: '', facebookURL: '' })
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchError, setSearchError] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
   const accountPath = loadCustomerAuth()?.accessToken ? '/manage-profile' : '/login'
+
+  useEffect(() => {
+    const name = searchTerm.trim()
+    if (!name) {
+      setSearchResults([])
+      setSearchLoading(false)
+      setSearchError('')
+      return undefined
+    }
+
+    let cancelled = false
+    const timeoutId = window.setTimeout(async () => {
+      setSearchLoading(true)
+      setSearchError('')
+      try {
+        const response = await searchProducts({
+          name,
+          isActive: true,
+          pageNumber: 1,
+          pageSize: 6,
+        })
+        const items = response?.items ?? response?.Items ?? []
+        if (!cancelled) {
+          setSearchResults(
+            items
+              .map((product) => ({
+                id: product.id ?? product.Id,
+                name: product.name ?? product.Name ?? '',
+              }))
+              .filter((product) => product.id && product.name)
+          )
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSearchResults([])
+          setSearchError(error?.message || 'Unable to search products.')
+        }
+      } finally {
+        if (!cancelled) setSearchLoading(false)
+      }
+    }, 250)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+    }
+  }, [searchTerm])
 
   useEffect(() => {
     let cancelled = false
@@ -60,9 +113,65 @@ export default function StoreLayout() {
           </nav>
 
           <div className="flex items-center gap-5 text-[#333130]">
-            <div className="hidden lg:flex items-center bg-[#F4F1EE] border border-[#E2DDD9] rounded-full px-4 py-1.5 w-64">
+            <div
+              className="relative hidden w-64 items-center rounded-full border border-[#E2DDD9] bg-[#F4F1EE] px-4 py-1.5 lg:flex"
+              onFocus={() => setSearchOpen(true)}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) {
+                  setSearchOpen(false)
+                }
+              }}
+            >
               <svg className="w-4 h-4 text-[#8C847E]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0x"/></svg>
-              <input type="text" placeholder="Search for jewellery..." className="bg-transparent border-none text-xs ml-2 w-full focus:outline-none placeholder-[#AA9F96]" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search for jewellery..."
+                aria-label="Search products"
+                aria-expanded={searchOpen && Boolean(searchTerm.trim())}
+                aria-controls="store-product-search-results"
+                autoComplete="off"
+                className="ml-2 w-full border-none bg-transparent text-xs focus:outline-none placeholder-[#AA9F96]"
+              />
+              {searchOpen && searchTerm.trim() && (
+                <div
+                  id="store-product-search-results"
+                  role="listbox"
+                  className="absolute left-0 right-0 top-full z-[70] mt-2 max-h-80 overflow-y-auto rounded-lg border border-[#E2DDD9] bg-white py-2 text-left shadow-lg"
+                >
+                  {searchLoading && (
+                    <p role="status" className="px-4 py-3 text-xs text-[#77766f]">
+                      Searching products...
+                    </p>
+                  )}
+                  {searchError && (
+                    <p role="alert" className="px-4 py-3 text-xs text-red-700">
+                      {searchError}
+                    </p>
+                  )}
+                  {!searchLoading && !searchError && searchResults.length === 0 && (
+                    <p className="px-4 py-3 text-xs text-[#77766f]">
+                      No products found.
+                    </p>
+                  )}
+                  {!searchLoading && !searchError && searchResults.map((product) => (
+                    <Link
+                      key={product.id}
+                      role="option"
+                      aria-selected="false"
+                      to={`/store/products/${encodeURIComponent(product.id)}`}
+                      onClick={() => {
+                        setSearchTerm('')
+                        setSearchOpen(false)
+                      }}
+                      className="block px-4 py-2.5 text-xs text-[#333130] hover:bg-[#F4F1EE] hover:text-[#A37E58]"
+                    >
+                      {product.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
             <Link to={accountPath} aria-label="Profile"><svg className="w-6 h-6 stroke-current" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></Link>
             <Link to="/manage-profile/wishlist" aria-label="Wishlist"><svg className="w-6 h-6 stroke-current" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg></Link>

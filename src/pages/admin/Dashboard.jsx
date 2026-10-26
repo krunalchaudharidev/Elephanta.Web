@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 export default function Dashboard() {
   return (
     <>
@@ -67,9 +69,9 @@ export default function Dashboard() {
             <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">Manage your products, categories, orders, customers and store settings from one convenient dashboard.</p>
           </div>
 
-          <button className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">View Products
+          <Link to="/admin/products" className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">View Products
             <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </button>
+          </Link>
         </div>
       </div>
     </>

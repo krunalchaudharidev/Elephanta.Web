@@ -1,4 +1,4 @@
-import { adminApiGet as apiGet, adminApiPost as apiPost, fetchWithAdminAuth as fetchWithAuth } from './api'
+import { adminApiGet as apiGet, adminApiPost as apiPost, customerApiGet, customerApiPost, fetchWithAdminAuth as fetchWithAuth, fetchWithCustomerAuth } from './api'
 import { showToast, ToastTypes } from '../components/admin/shared/Toast'
 
 export async function getCategories(pageNumber = 1, pageSize = 10, name, isActive, sort) {
@@ -32,6 +32,41 @@ export async function searchProducts({ name, minPrice, maxPrice, categoryId, cat
 export async function getProduct(id) {
 	if (!id) throw new Error('id required')
 	return apiGet(`/api/Product/products/${id}`)
+}
+
+export async function createProductReview(productId, payload) {
+	if (!productId) throw new Error('productId required')
+	return customerApiPost(`/api/Product/products/${productId}/reviews`, payload)
+}
+
+export async function getProductReviews(productId, pageNumber = 1, pageSize = 10) {
+	if (!productId) throw new Error('productId required')
+	const query = new URLSearchParams({
+		pageNumber: String(pageNumber),
+		pageSize: String(pageSize),
+	})
+	return customerApiGet(`/api/Product/products/${productId}/reviews?${query.toString()}`)
+}
+
+export async function getProductReview(id) {
+	if (!id) throw new Error('id required')
+	return customerApiGet(`/api/Product/products/reviews/${id}`)
+}
+
+export async function updateProductReview(id, payload) {
+	if (!id) throw new Error('id required')
+	const res = await fetchWithCustomerAuth(`/api/Product/products/reviews/${id}`, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(payload),
+	})
+	if (!res.ok) {
+		const body = await res.text()
+		const err = new Error(`Update review failed: ${res.status} ${body}`)
+		err.status = res.status
+		throw err
+	}
+	return res.json()
 }
 
 export async function getProductFaqs(productId) {

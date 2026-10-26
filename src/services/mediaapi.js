@@ -1,7 +1,7 @@
 import { buildUrl, fetchWithAdminAuth, fetchWithCustomerAuth } from './api'
 import { showToast, ToastTypes } from '../components/admin/shared/Toast'
 
-export async function uploadMedia({ file, moduleType = 'product', isCompress = false, fieldName = 'File' }) {
+export async function uploadMedia({ file, moduleType = 'product', isCompress = false, fieldName = 'File', scope = 'admin' }) {
   if (!file) throw new Error('file is required')
   const form = new FormData()
   form.append(fieldName, file)
@@ -9,7 +9,8 @@ export async function uploadMedia({ file, moduleType = 'product', isCompress = f
   form.append('IsCompress', isCompress ? 'true' : 'false')
 
   try {
-    const res = await fetchWithAdminAuth('/api/Media/upload', {
+    const fetchUpload = scope === 'customer' ? fetchWithCustomerAuth : fetchWithAdminAuth
+    const res = await fetchUpload('/api/Media/upload', {
       method: 'POST',
       body: form,
     })

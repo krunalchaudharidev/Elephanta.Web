@@ -420,7 +420,7 @@ export default function StoreHome() {
                 className="group overflow-hidden rounded-lg border border-[#ece7e0] bg-white transition hover:-translate-y-1 hover:shadow-lg hover:shadow-[#30251a]/5"
               >
                 <div className="relative aspect-[1.15] overflow-hidden bg-[#f1e9df]">
-                  <a href={`/products/${product.id}`}>
+                  <a href={`/store/products/${product.id}`}>
                     <RemoteImage
                       src={product.image}
                       alt={product.name}

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import RemoteImage from "../../components/store/RemoteImage";
+import ProductReviews from "../../components/store/ProductReviews";
 import { getProduct, getProductFaqs } from "../../services/productapi";
 import { getWebsiteSetting } from "../../services/websitesettingsapi";
 import {
@@ -162,6 +163,13 @@ export default function ProductDetails() {
   const [faqs, setFaqs] = useState([]);
   const [faqsLoading, setFaqsLoading] = useState(true);
   const [faqsError, setFaqsError] = useState("");
+  const handleReviewCountChange = useCallback((reviewCount) => {
+    setProduct((current) =>
+      current && current.reviewCount !== reviewCount
+        ? { ...current, reviewCount }
+        : current
+    );
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -257,6 +265,7 @@ export default function ProductDetails() {
         const compareAtPrice = response?.compareAtPrice ?? response?.CompareAtPrice ?? null;
         const stockQuantity = Number(response?.stockQuantity ?? response?.StockQuantity ?? 0);
         const reservedQuantity = Number(response?.reservedQuantity ?? response?.ReservedQuantity ?? 0);
+        const reviewCount = Number(response?.reviewCount ?? response?.ReviewCount ?? 0);
 
         if (!cancelled) {
           setProduct({
@@ -276,7 +285,7 @@ export default function ProductDetails() {
             isActive: response?.isActive ?? response?.IsActive ?? false,
             isFeatured: response?.isFeatured ?? response?.IsFeatured ?? false,
             isCategoryActive: response?.isCategoryActive ?? response?.IsCategoryActive ?? false,
-            reviewCount: response?.reviewCount ?? response?.ReviewCount ?? 0,
+            reviewCount: Number.isFinite(reviewCount) ? reviewCount : 0,
             rating: response?.averageRating ?? response?.AverageRating ?? 0,
             images: orderedImageIds.map((imageId) => ({
               src: `/api/Media/${imageId}`,
@@ -653,7 +662,7 @@ export default function ProductDetails() {
             ))}
           </div>
 
-          <div className="grid gap-8 py-8 lg:grid-cols-[1.2fr_0.8fr] lg:gap-12">
+          <div className="grid items-start gap-8 py-8 lg:grid-cols-[1.2fr_0.8fr] lg:gap-12">
             <div>
               {activeTab === "description" && (
                 <div>
@@ -669,34 +678,13 @@ export default function ProductDetails() {
               )}
 
               {activeTab === "reviews" && (
-                <div id="reviews">
-                  <h2 className="font-serif text-2xl">Customer Reviews</h2>
-                  <div className="mt-5 rounded-lg border border-[#eae3da] bg-white p-5 sm:p-7">
-                    <div className="flex flex-wrap items-center gap-4">
-                      <span className="font-serif text-5xl">
-                        {product.rating}
-                      </span>
-                      <div>
-                        <div className="flex gap-1 text-[#c79643]">
-                          {[1, 2, 3, 4, 5].map((item) => (
-                            <Star
-                              key={item}
-                              size={17}
-                              className="fill-current"
-                            />
-                          ))}
-                        </div>
-                        <p className="mt-2 text-xs text-[#817a71]">
-                          Based on {product.reviewCount} reviews
-                        </p>
-                      </div>
-                    </div>
-                    <p className="mt-6 border-t border-[#eee7df] pt-5 text-sm leading-6 text-[#817a71]">
-                      Customer reviews will appear here when review data is
-                      connected to your API.
-                    </p>
-                  </div>
-                </div>
+                <ProductReviews
+                  key={id}
+                  productId={id}
+                  averageRating={product.rating}
+                  initialReviewCount={product.reviewCount}
+                  onReviewCountChange={handleReviewCountChange}
+                />
               )}
 
               {activeTab === "faqs" && (
