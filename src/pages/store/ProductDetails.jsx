@@ -7,6 +7,11 @@ import {
   getProduct,
   getProductFaqs,
 } from "../../services/productapi";
+import {
+  addToWishlist,
+  getWishlist,
+  removeFromWishlist,
+} from "../../services/wishlistapi";
 import { getWebsiteSetting } from "../../services/websitesettingsapi";
 import {
   Heart,
@@ -113,6 +118,8 @@ export default function ProductDetails() {
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(true);
+  const [wishlistUpdating, setWishlistUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState("description");
   const [notification, setNotification] = useState("");
   const [freeShippingOnOrdersAbove, setFreeShippingOnOrdersAbove] = useState(2000);
@@ -126,6 +133,41 @@ export default function ProductDetails() {
         : current
     );
   }, []);
+
+  useEffect(() => {
+    if (!id) return undefined;
+    let cancelled = false;
+
+    async function loadWishlist() {
+      setWishlistLoading(true);
+      setIsFavorite(false);
+      try {
+        const response = await getWishlist();
+        const items = Array.isArray(response)
+          ? response
+          : response?.items ?? response?.Items ?? [];
+        const isProductWishlisted = items.some((item) => {
+          const wishlistProductId = item?.productId ?? item?.ProductId;
+          return (
+            wishlistProductId !== undefined &&
+            String(wishlistProductId).toLowerCase() === String(id).toLowerCase()
+          );
+        });
+        if (!cancelled) setIsFavorite(isProductWishlisted);
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load wishlist.", error);
+        }
+      } finally {
+        if (!cancelled) setWishlistLoading(false);
+      }
+    }
+
+    loadWishlist();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -276,6 +318,28 @@ export default function ProductDetails() {
     window.setTimeout(() => setNotification(""), 2500);
   };
 
+  const handleWishlistToggle = async () => {
+    if (!product || wishlistLoading || wishlistUpdating) return;
+
+    setWishlistUpdating(true);
+    try {
+      if (isFavorite) {
+        await removeFromWishlist(product.id);
+        setIsFavorite(false);
+        showNotification("Removed from your wishlist.");
+      } else {
+        await addToWishlist(product.id);
+        setIsFavorite(true);
+        showNotification("Added to your wishlist.");
+      }
+    } catch (error) {
+      console.error("Failed to update wishlist.", error);
+      showNotification(error?.message || "Unable to update your wishlist.");
+    } finally {
+      setWishlistUpdating(false);
+    }
+  };
+
   const handleAddToCart = () => {
     if (!product || !product.isActive || !product.isCategoryActive || product.stockQuantity <= product.reservedQuantity) {
       return;
@@ -382,8 +446,10 @@ export default function ProductDetails() {
               )}
 
               <button
-                onClick={() => setIsFavorite(!isFavorite)}
-                aria-label="Add to wishlist"
+                onClick={handleWishlistToggle}
+                disabled={wishlistLoading || wishlistUpdating}
+                aria-label={isFavorite ? "Remove from wishlist" : "Add to wishlist"}
+                aria-pressed={isFavorite}
                 className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 transition hover:bg-white"
               >
                 <Heart
@@ -540,14 +606,9 @@ export default function ProductDetails() {
               </button>
 
               <button
-                onClick={() => {
-                  setIsFavorite((current) => !current);
-                  showNotification(
-                    isFavorite
-                      ? "Removed from your wishlist."
-                      : "Added to your wishlist."
-                  );
-                }}
+                onClick={handleWishlistToggle}
+                disabled={wishlistLoading || wishlistUpdating}
+                aria-pressed={isFavorite}
                 className="flex min-h-12 items-center justify-center gap-2 rounded-md border border-[#dfd4c7] bg-white px-5 py-3 text-xs font-medium transition hover:border-[#a78051] hover:text-[#a78051]"
               >
                 <Heart

@@ -1,7 +1,12 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import RemoteImage from "../../components/store/RemoteImage";
 import { getCategories, searchProducts } from "../../services/productapi";
+import {
+  addToWishlist,
+  getWishlist,
+  removeFromWishlist,
+} from "../../services/wishlistapi";
 import { getWebsiteSetting } from "../../services/websitesettingsapi";
 import {
   ArrowLeft,
@@ -9,6 +14,7 @@ import {
   ArrowUpRight,
   ChevronLeft,
   ChevronRight,
+  Check,
   Heart,
   Mail,
   Menu,
@@ -118,10 +124,45 @@ export default function StoreHome() {
   const [freeShippingOnOrdersAbove, setFreeShippingOnOrdersAbove] = useState(2000);
   const [activeSlide, setActiveSlide] = useState(0);
   const [wishlist, setWishlist] = useState([]);
+  const [wishlistLoading, setWishlistLoading] = useState(true);
+  const [wishlistUpdating, setWishlistUpdating] = useState([]);
+  const [notification, setNotification] = useState("");
   const [cart, setCart] = useState([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const wishlistLocks = useRef(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadWishlist() {
+      try {
+        const response = await getWishlist();
+        const items = Array.isArray(response)
+          ? response
+          : response?.items ?? response?.Items ?? [];
+        if (!cancelled) {
+          setWishlist(
+            items
+              .map((item) => item?.productId ?? item?.ProductId)
+              .filter((productId) => productId !== undefined && productId !== null)
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load wishlist.", error);
+        }
+      } finally {
+        if (!cancelled) setWishlistLoading(false);
+      }
+    }
+
+    loadWishlist();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -224,12 +265,46 @@ export default function StoreHome() {
     );
   };
 
-  const toggleWishlist = (id) => {
-    setWishlist((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id]
+  const showNotification = (message) => {
+    setNotification(message);
+    window.setTimeout(() => setNotification(""), 2500);
+  };
+
+  const isWishlisted = (productId) =>
+    wishlist.some(
+      (item) => String(item).toLowerCase() === String(productId).toLowerCase()
     );
+
+  const toggleWishlist = async (id) => {
+    if (!id || wishlistLoading) return;
+    const productId = String(id);
+    const lockKey = productId.toLowerCase();
+    if (wishlistLocks.current.has(lockKey)) return;
+
+    wishlistLocks.current.add(lockKey);
+    setWishlistUpdating((current) => [...current, lockKey]);
+    const currentlyWishlisted = isWishlisted(productId);
+    try {
+      if (currentlyWishlisted) {
+        await removeFromWishlist(productId);
+        setWishlist((current) =>
+          current.filter((item) => String(item).toLowerCase() !== lockKey)
+        );
+        showNotification("Removed from your wishlist.");
+      } else {
+        await addToWishlist(productId);
+        setWishlist((current) => [...current, productId]);
+        showNotification("Added to your wishlist.");
+      }
+    } catch (error) {
+      console.error("Failed to update wishlist.", error);
+      showNotification(error?.message || "Unable to update your wishlist.");
+    } finally {
+      wishlistLocks.current.delete(lockKey);
+      setWishlistUpdating((current) =>
+        current.filter((item) => item !== lockKey)
+      );
+    }
   };
 
   const addToCart = (product) => {
@@ -431,17 +506,18 @@ export default function StoreHome() {
                   <button
                     onClick={() => toggleWishlist(product.id)}
                     aria-label={
-                      wishlist.includes(product.id)
+                      isWishlisted(product.id)
                         ? "Remove from wishlist"
                         : "Add to wishlist"
                     }
-                    aria-pressed={wishlist.includes(product.id)}
-                    className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 transition hover:bg-white"
+                    disabled={wishlistLoading || wishlistUpdating.includes(String(product.id).toLowerCase())}
+                    aria-pressed={isWishlisted(product.id)}
+                    className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Heart
                       size={16}
                       className={
-                        wishlist.includes(product.id)
+                        isWishlisted(product.id)
                           ? "fill-[#a77b4c] text-[#a77b4c]"
                           : "text-[#1b2520]"
                       }
@@ -609,6 +685,15 @@ export default function StoreHome() {
         </div>
       </section>
 
+      {notification && (
+        <div
+          role="status"
+          className="fixed bottom-5 left-1/2 z-[70] flex max-w-[calc(100%-32px)] -translate-x-1/2 items-center gap-3 rounded-lg bg-[#102722] px-5 py-4 text-sm text-white shadow-xl"
+        >
+          <Check size={18} className="shrink-0 text-[#d4ae62]" />
+          {notification}
+        </div>
+      )}
     </main>
   );
 }

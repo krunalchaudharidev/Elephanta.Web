@@ -1,10 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { getCategories, searchProducts } from "../../services/productapi";
+import {
+  addToWishlist,
+  getWishlist,
+  removeFromWishlist,
+} from "../../services/wishlistapi";
 import RemoteImage from "../../components/store/RemoteImage";
 import {
   Search,
   Heart,
+  Check,
   ShoppingCart,
   SlidersHorizontal,
   X,
@@ -70,8 +76,43 @@ export default function ProductListing() {
   const [pageSize] = useState(12);
   const [totalCount, setTotalCount] = useState(0);
   const [wishlist, setWishlist] = useState([]);
+  const [wishlistLoading, setWishlistLoading] = useState(true);
+  const [wishlistUpdating, setWishlistUpdating] = useState([]);
+  const [notification, setNotification] = useState("");
   const [cart, setCart] = useState([]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const wishlistLocks = useRef(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadWishlist() {
+      try {
+        const response = await getWishlist();
+        const items = Array.isArray(response)
+          ? response
+          : response?.items ?? response?.Items ?? [];
+        if (!cancelled) {
+          setWishlist(
+            items
+              .map((item) => item?.productId ?? item?.ProductId)
+              .filter((productId) => productId !== undefined && productId !== null)
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load wishlist.", error);
+        }
+      } finally {
+        if (!cancelled) setWishlistLoading(false);
+      }
+    }
+
+    loadWishlist();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -251,12 +292,46 @@ export default function ProductListing() {
     Number(inStockOnly);
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
-  const toggleWishlist = (id) => {
-    setWishlist((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id]
+  const showNotification = (message) => {
+    setNotification(message);
+    window.setTimeout(() => setNotification(""), 2500);
+  };
+
+  const isWishlisted = (productId) =>
+    wishlist.some(
+      (item) => String(item).toLowerCase() === String(productId).toLowerCase()
     );
+
+  const toggleWishlist = async (product) => {
+    if (!product?.id || wishlistLoading) return;
+    const productId = String(product.id);
+    const lockKey = productId.toLowerCase();
+    if (wishlistLocks.current.has(lockKey)) return;
+
+    wishlistLocks.current.add(lockKey);
+    setWishlistUpdating((current) => [...current, lockKey]);
+    const currentlyWishlisted = isWishlisted(productId);
+    try {
+      if (currentlyWishlisted) {
+        await removeFromWishlist(productId);
+        setWishlist((current) =>
+          current.filter((item) => String(item).toLowerCase() !== lockKey)
+        );
+        showNotification("Removed from your wishlist.");
+      } else {
+        await addToWishlist(productId);
+        setWishlist((current) => [...current, productId]);
+        showNotification("Added to your wishlist.");
+      }
+    } catch (error) {
+      console.error("Failed to update wishlist.", error);
+      showNotification(error?.message || "Unable to update your wishlist.");
+    } finally {
+      wishlistLocks.current.delete(lockKey);
+      setWishlistUpdating((current) =>
+        current.filter((item) => item !== lockKey)
+      );
+    }
   };
 
   const addToCart = (product) => {
@@ -618,18 +693,20 @@ export default function ProductListing() {
                     )}
 
                     <button
-                      onClick={() => toggleWishlist(product.id)}
+                      onClick={() => toggleWishlist(product)}
+                      disabled={wishlistLoading || wishlistUpdating.includes(String(product.id).toLowerCase())}
                       aria-label={`${
-                        wishlist.includes(product.id)
+                        isWishlisted(product.id)
                           ? "Remove from"
                           : "Add to"
                       } wishlist: ${product.name}`}
-                      className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 transition hover:bg-white sm:right-3 sm:top-3 sm:h-9 sm:w-9"
+                      aria-pressed={isWishlisted(product.id)}
+                      className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/95 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 sm:right-3 sm:top-3 sm:h-9 sm:w-9"
                     >
                       <Heart
                         size={17}
                         className={
-                          wishlist.includes(product.id)
+                          isWishlisted(product.id)
                             ? "fill-red-500 text-red-500"
                             : "text-[#363a35]"
                         }
@@ -739,6 +816,15 @@ export default function ProductListing() {
         </div>
       </main>
 
+      {notification && (
+        <div
+          role="status"
+          className="fixed bottom-5 left-1/2 z-[70] flex max-w-[calc(100%-32px)] -translate-x-1/2 items-center gap-3 rounded-lg bg-[#102722] px-5 py-4 text-sm text-white shadow-xl"
+        >
+          <Check size={18} className="shrink-0 text-[#d4ae62]" />
+          {notification}
+        </div>
+      )}
     </div>
   );
 }
