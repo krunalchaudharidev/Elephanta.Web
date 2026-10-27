@@ -9,8 +9,17 @@ import {
   X,
 } from 'lucide-react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { customerApiGet, clearCustomerAuth, fetchWithCustomerAuth, loadCustomerAuth } from '../../services/api'
+import { clearCustomerAuth, loadCustomerAuth } from '../../services/api'
 import { logout } from '../../services/authapi'
+import {
+  changeUserPassword,
+  createUserAddress,
+  deleteUserAddress,
+  getUserProfile,
+  getUserAddresses,
+  updateUserProfile,
+  updateUserAddress,
+} from '../../services/userapi'
 
 const initialProfile = {
   firstName: '',
@@ -27,6 +36,31 @@ const tabs = [
   { id: 'addresses', label: 'Addresses', icon: MapPin, to: '/manage-profile/addresses' },
 ]
 
+function mapUserAddress(address) {
+  return {
+    id: address?.id ?? address?.Id,
+    addressLine1: address?.addressLine1 ?? address?.AddressLine1 ?? '',
+    addressLine2: address?.addressLine2 ?? address?.AddressLine2 ?? '',
+    city: address?.city ?? address?.City ?? '',
+    state: address?.state ?? address?.State ?? '',
+    postalCode: address?.postalCode ?? address?.PostalCode ?? '',
+    country: address?.country ?? address?.Country ?? '',
+    isDefault: address?.isPrimary ?? address?.IsPrimary ?? false,
+  }
+}
+
+function toUserAddressPayload(address) {
+  return {
+    addressLine1: address.addressLine1.trim(),
+    addressLine2: address.addressLine2.trim(),
+    city: address.city.trim(),
+    state: address.state.trim(),
+    postalCode: address.postalCode.trim(),
+    country: address.country.trim(),
+    isPrimary: Boolean(address.isDefault),
+  }
+}
+
 function readStoredItems(key) {
   try {
     const items = JSON.parse(localStorage.getItem(key) || '[]')
@@ -38,16 +72,11 @@ function readStoredItems(key) {
 
 export default function ManageProfile() {
   const [profile, setProfile] = useState(initialProfile)
-  const [addresses, setAddresses] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('elephanta_addresses') || '[]')
-    } catch {
-      return []
-    }
-  })
+  const [addresses, setAddresses] = useState([])
   const [wishlist, setWishlist] = useState(() => readStoredItems('elephanta_wishlist'))
   const [orders] = useState(() => readStoredItems('elephanta_orders'))
   const [loading, setLoading] = useState(false)
+  const [loadingAddresses, setLoadingAddresses] = useState(true)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [notice, setNotice] = useState(null)
   const location = useLocation()
@@ -71,7 +100,7 @@ export default function ManageProfile() {
 
     async function loadProfile() {
       try {
-        const body = await customerApiGet('/api/User/me')
+        const body = await getUserProfile()
         if (!active) return
         const user = body?.user || body || {}
         setProfile({
@@ -99,12 +128,32 @@ export default function ManageProfile() {
   }, [auth?.accessToken, auth?.user?.email, navigate])
 
   useEffect(() => {
-    try {
-      localStorage.setItem('elephanta_addresses', JSON.stringify(addresses))
-    } catch {
-      setNotice({ type: 'error', message: 'Unable to save addresses in this browser.' })
+    if (!auth?.accessToken) return undefined
+    let active = true
+
+    async function loadAddresses() {
+      setLoadingAddresses(true)
+      try {
+        const response = await getUserAddresses()
+        const items = Array.isArray(response)
+          ? response
+          : response?.items ?? response?.Items ?? []
+        if (!Array.isArray(items)) {
+          throw new Error('Unexpected addresses response.')
+        }
+        if (active) setAddresses(items.map(mapUserAddress))
+      } catch (error) {
+        if (active) {
+          setNotice({ type: 'error', message: error.message || 'Unable to load your addresses.' })
+        }
+      } finally {
+        if (active) setLoadingAddresses(false)
+      }
     }
-  }, [addresses])
+
+    loadAddresses()
+    return () => { active = false }
+  }, [auth?.accessToken])
 
   useEffect(() => {
     try {
@@ -123,21 +172,13 @@ export default function ManageProfile() {
     setLoading(true)
     setNotice(null)
     try {
-      const response = await fetchWithCustomerAuth('/api/User/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstName: profile.firstName.trim(),
-          lastName: profile.lastName.trim(),
-          phoneNumber: profile.phoneNumber.trim(),
-          dateOfBirth: profile.dateOfBirth || null,
-          gender: profile.gender,
-        }),
+      const body = await updateUserProfile({
+        firstName: profile.firstName.trim(),
+        lastName: profile.lastName.trim(),
+        phoneNumber: profile.phoneNumber.trim(),
+        dateOfBirth: profile.dateOfBirth || null,
+        gender: profile.gender,
       })
-      const body = response.status === 204 ? null : await response.json()
-      if (!response.ok || body?.isSuccess === false) {
-        throw new Error(body?.message || 'Unable to update your profile.')
-      }
       showNotice(body?.message || 'Your profile has been updated.')
     } catch (error) {
       showNotice(error.message || 'Unable to update your profile.', 'error')
@@ -150,15 +191,7 @@ export default function ManageProfile() {
     setLoading(true)
     setNotice(null)
     try {
-      const response = await fetchWithCustomerAuth('/api/User/change-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(passwordData),
-      })
-      const body = response.status === 204 ? null : await response.json()
-      if (!response.ok || body?.isSuccess === false) {
-        throw new Error(body?.message || 'Unable to change your password.')
-      }
+      const body = await changeUserPassword(passwordData)
       onSuccess()
       showNotice(body?.message || 'Your password has been changed.')
     } catch (error) {
@@ -171,33 +204,54 @@ export default function ManageProfile() {
   async function handleAddressSave(form) {
     setLoading(true)
     try {
-      const isNew = form.id === null
-      const savedAddress = { ...form, id: isNew ? `local-${Date.now()}` : form.id }
-      setAddresses((current) => {
-        let next = isNew ? [...current, savedAddress] : current.map((item) => item.id === savedAddress.id ? savedAddress : item)
-        if (savedAddress.isDefault) {
-          next = next.map((item) => ({ ...item, isDefault: item.id === savedAddress.id }))
-        } else if (isNew && next.length === 1) {
-          next[0] = { ...next[0], isDefault: true }
-        }
-        return next
-      })
-      showNotice('Address saved in this browser. Online address sync is not available yet.', 'info')
+      const payload = toUserAddressPayload(form)
+      if (form.id === null) {
+        const response = await createUserAddress(payload)
+        const savedAddress = mapUserAddress(response)
+        setAddresses((current) => [
+          ...current.map((address) =>
+            payload.isPrimary ? { ...address, isDefault: false } : address
+          ),
+          savedAddress,
+        ])
+      } else {
+        await updateUserAddress(form.id, payload)
+        setAddresses((current) => current.map((address) => {
+          if (address.id === form.id) {
+            return {
+              ...address,
+              addressLine1: payload.addressLine1,
+              addressLine2: payload.addressLine2,
+              city: payload.city,
+              state: payload.state,
+              postalCode: payload.postalCode,
+              country: payload.country,
+              isDefault: payload.isPrimary,
+            }
+          }
+          return payload.isPrimary ? { ...address, isDefault: false } : address
+        }))
+      }
+      showNotice('Address saved successfully.')
+    } catch (error) {
+      showNotice(error.message || 'Unable to save your address.', 'error')
+      throw error
     } finally {
       setLoading(false)
     }
   }
 
-  function handleAddressDelete(id) {
-    if (!window.confirm('Are you sure you want to delete this address?')) return
-    setAddresses((current) => {
-      const next = current.filter((item) => item.id !== id)
-      if (!next.some((item) => item.isDefault) && next.length > 0) {
-        next[0] = { ...next[0], isDefault: true }
-      }
-      return next
-    })
-    showNotice('Address removed from this browser.', 'info')
+  async function handleAddressDelete(id) {
+    setLoading(true)
+    try {
+      await deleteUserAddress(id)
+      setAddresses((current) => current.filter((item) => item.id !== id))
+      showNotice('Address deleted successfully.')
+    } catch (error) {
+      showNotice(error.message || 'Unable to delete your address.', 'error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   function removeWishlistItem(id) {
@@ -292,6 +346,7 @@ export default function ManageProfile() {
                   profile,
                   setProfile,
                   addresses,
+                  loadingAddresses,
                   wishlist,
                   orders,
                   loading,

@@ -7,25 +7,38 @@ export default function ChangePassword() {
   const { onPasswordSave: onSave, loading } = useOutletContext()
   const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
   const [visible, setVisible] = useState({})
-  const [error, setError] = useState('')
+  const [errors, setErrors] = useState({})
 
   function update(event) {
-    setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
-    setError('')
+    const { name, value } = event.target
+    setForm((current) => ({ ...current, [name]: value }))
+    setErrors((current) => ({
+      ...current,
+      [name]: '',
+      ...(name === 'newPassword' ? { confirmPassword: '' } : {}),
+    }))
   }
 
   function submit(event) {
     event.preventDefault()
-    if (form.newPassword.length < 8) {
-      setError('New password must contain at least 8 characters.')
-      return
+    const nextErrors = {}
+    if (!form.currentPassword) nextErrors.currentPassword = 'This field is required.'
+    if (!form.newPassword) {
+      nextErrors.newPassword = 'This field is required.'
+    } else if (form.newPassword.length < 8) {
+      nextErrors.newPassword = 'Password must contain at least 8 characters.'
     }
-    if (form.newPassword !== form.confirmPassword) {
-      setError('New password and confirmation do not match.')
-      return
+    if (!form.confirmPassword) {
+      nextErrors.confirmPassword = 'This field is required.'
+    } else if (form.newPassword !== form.confirmPassword) {
+      nextErrors.confirmPassword = 'Passwords do not match.'
     }
+    setErrors(nextErrors)
+    if (Object.keys(nextErrors).length > 0) return
+
     onSave({ oldPassword: form.currentPassword, newPassword: form.newPassword }, () => {
       setForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      setErrors({})
     })
   }
 
@@ -35,17 +48,18 @@ export default function ChangePassword() {
     return (
       <ProfileField key={name} label={label} htmlFor={id} required>
         <div className="relative">
-          <input id={id} className={`${inputClass} pr-12`} name={name} type={visibleField ? 'text' : 'password'} value={form[name]} onChange={update} placeholder={placeholder} autoComplete={name === 'currentPassword' ? 'current-password' : 'new-password'} minLength={name === 'currentPassword' ? undefined : 8} required />
+          <input id={id} className={`${inputClass} pr-12`} name={name} type={visibleField ? 'text' : 'password'} value={form[name]} onChange={update} placeholder={placeholder} autoComplete={name === 'currentPassword' ? 'current-password' : 'new-password'} minLength={name === 'currentPassword' ? undefined : 8} required aria-invalid={Boolean(errors[name])} aria-describedby={errors[name] ? `${id}-error` : undefined} />
           <button type="button" onClick={() => setVisible((current) => ({ ...current, [name]: !current[name] }))} aria-label={visibleField ? 'Hide password' : 'Show password'} title={visibleField ? 'Hide password' : 'Show password'} className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-[#7B8982] hover:text-[#A77B4C]">
             {visibleField ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
+        {errors[name] && <p id={`${id}-error`} role="alert" className="mt-1 text-xs text-red-600">{errors[name]}</p>}
       </ProfileField>
     )
   }
 
   return (
-    <form onSubmit={submit} className="space-y-6">
+    <form onSubmit={submit} noValidate className="space-y-6">
       <div>
         <h2 className="font-serif text-2xl">Change Password</h2>
         <p className="mt-1 text-sm text-[#7A857E]">Choose a strong password to keep your account secure.</p>
@@ -55,7 +69,6 @@ export default function ChangePassword() {
         {passwordField('newPassword', 'New Password', 'At least 8 characters')}
         {passwordField('confirmPassword', 'Confirm New Password', 'Re-enter new password')}
       </div>
-      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <div className="flex items-start gap-3 rounded-md border border-[#E9E1D7] bg-[#FCFAF7] p-4">
         <ShieldCheck size={19} className="mt-0.5 shrink-0 text-[#A77B4C]" />
         <div>
