@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { getCategories, searchProducts } from "../../services/productapi";
 import {
@@ -7,11 +7,15 @@ import {
   removeFromWishlist,
 } from "../../services/wishlistapi";
 import RemoteImage from "../../components/store/RemoteImage";
+import CartActionButton from "../../components/store/CartActionButton";
+import {
+  getCartItemsForProducts,
+  getCartSessionId,
+} from "../../services/cartapi";
 import {
   Search,
   Heart,
   Check,
-  ShoppingCart,
   SlidersHorizontal,
   X,
   ChevronDown,
@@ -79,7 +83,8 @@ export default function ProductListing() {
   const [wishlistLoading, setWishlistLoading] = useState(true);
   const [wishlistUpdating, setWishlistUpdating] = useState([]);
   const [notification, setNotification] = useState("");
-  const [cart, setCart] = useState([]);
+  const [cartItemsByProductId, setCartItemsByProductId] = useState({});
+  const [cartLoading, setCartLoading] = useState(true);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const wishlistLocks = useRef(new Set());
 
@@ -264,6 +269,60 @@ export default function ProductListing() {
     pageSize,
   ]);
 
+  const showNotification = useCallback((message) => {
+    setNotification(message);
+    window.setTimeout(() => setNotification(""), 2500);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (products.length === 0) {
+      setCartItemsByProductId({});
+      setCartLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    async function loadCartItems() {
+      setCartLoading(true);
+      try {
+        const productIds = products
+          .map((product) => product.id)
+          .filter((productId) => productId !== undefined && productId !== null);
+        const items = await getCartItemsForProducts(
+          productIds,
+          getCartSessionId()
+        );
+        if (!cancelled) {
+          setCartItemsByProductId(
+            Object.fromEntries(
+              Array.from(items, ([productId, item]) => [
+                productId,
+                {
+                  id: item.id ?? item.Id,
+                  quantity: Number(item.quantity ?? item.Quantity) || 1,
+                },
+              ])
+            )
+          );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load cart items.", error);
+          showNotification(error?.message || "Unable to load your cart.");
+        }
+      } finally {
+        if (!cancelled) setCartLoading(false);
+      }
+    }
+
+    loadCartItems();
+    return () => {
+      cancelled = true;
+    };
+  }, [products, showNotification]);
+
   const toggleSelection = (value, selected, setSelected) => {
     setPageNumber(1);
     setSelected(
@@ -291,11 +350,6 @@ export default function ProductListing() {
     (minRating > 0 ? 1 : 0) +
     Number(inStockOnly);
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-
-  const showNotification = (message) => {
-    setNotification(message);
-    window.setTimeout(() => setNotification(""), 2500);
-  };
 
   const isWishlisted = (productId) =>
     wishlist.some(
@@ -334,8 +388,14 @@ export default function ProductListing() {
     }
   };
 
-  const addToCart = (product) => {
-    setCart((current) => [...current, product]);
+  const handleCartItemChange = (productId, item) => {
+    const key = String(productId).toLowerCase();
+    setCartItemsByProductId((current) => {
+      const updated = { ...current };
+      if (item) updated[key] = item;
+      else delete updated[key];
+      return updated;
+    });
   };
 
   const FilterContent = () => (
@@ -657,11 +717,28 @@ export default function ProductListing() {
             )}
 
             <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-3 2xl:grid-cols-4">
-              {products.map((product) => (
-                <article
-                  key={product.id}
-                  className="group min-w-0 overflow-hidden rounded-lg border border-[#eee7df] bg-white transition duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-[#342719]/5"
-                >
+              {products.map((product) => {
+                const cartItem =
+                  cartItemsByProductId[String(product.id).toLowerCase()];
+                const reservedQuantity = Number(
+                  product.reservedQuantity ?? product.ReservedQuantity ?? 0
+                );
+                const availableStock = Math.max(
+                  0,
+                  product.stockQuantity - reservedQuantity
+                );
+                const isAvailable =
+                  availableStock > 0 &&
+                  (!cartItem || Number(cartItem.quantity) < availableStock);
+                const nextQuantity = cartItem
+                  ? Math.min(Number(cartItem.quantity) + 1, availableStock)
+                  : 1;
+
+                return (
+                  <article
+                    key={product.id}
+                    className="group min-w-0 overflow-hidden rounded-lg border border-[#eee7df] bg-white transition duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-[#342719]/5"
+                  >
                   <div className="relative aspect-[0.86] overflow-hidden bg-[#f2ece5]">
                     <Link
                       to={`/store/products/${encodeURIComponent(product.id)}`}
@@ -755,17 +832,40 @@ export default function ProductListing() {
                   </Link>
 
                   <div className="px-3 pb-3 sm:px-4 sm:pb-4">
-                    <button
-                      disabled={product.stockQuantity === 0}
-                      onClick={() => addToCart(product)}
-                      className="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-[#172521] px-2 py-3 text-[10px] font-medium text-white transition hover:bg-[#a78051] disabled:cursor-not-allowed disabled:bg-[#c8c4be] sm:text-xs"
-                    >
-                      <ShoppingCart size={14} />
-                      {product.stockQuantity === 0 ? "Unavailable" : "Add to Cart"}
-                    </button>
+                    <CartActionButton
+                      productId={product.id}
+                      quantity={nextQuantity}
+                      cartItem={cartItem}
+                      onCartItemChange={(item) =>
+                        handleCartItemChange(product.id, item)
+                      }
+                      cartLoading={cartLoading || productsLoading}
+                      isAvailable={isAvailable}
+                      showCartQuantity
+                      allowRemove
+                      productName={product.name}
+                      className="mt-4 flex items-center justify-center gap-2 rounded-md bg-[#172521] px-2 py-3 text-[10px] font-medium text-white transition hover:bg-[#a78051] disabled:cursor-not-allowed disabled:bg-[#c8c4be] sm:text-xs"
+                      removeClassName="mt-4 flex shrink-0 items-center justify-center rounded-md border border-[#e5ddd3] px-3 text-[#817a71] transition hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      iconSize={14}
+                      onSuccess={({ updated, removed }) =>
+                        showNotification(
+                          removed
+                            ? "Removed from your cart."
+                            : updated
+                              ? "Cart quantity updated."
+                              : "Added to your cart."
+                        )
+                      }
+                      onError={(error) =>
+                        showNotification(
+                          error?.message || "Unable to update your cart."
+                        )
+                      }
+                    />
                   </div>
-                </article>
-              ))}
+                  </article>
+                );
+              })}
             </div>
 
             {!productsLoading && !productsError && products.length === 0 && (

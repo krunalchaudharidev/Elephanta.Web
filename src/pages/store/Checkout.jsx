@@ -15,6 +15,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
+import RemoteImage from '../../components/store/RemoteImage'
 
 const initialItems = [
   {
@@ -359,7 +360,7 @@ export default function Checkout() {
                   <div className="mt-5 divide-y divide-[#eee6dc]">
                     {items.map((item) => (
                       <div key={item.id} className="flex gap-3 py-4 first:pt-0">
-                        <img src={item.image} alt={item.name} loading="lazy" className="h-16 w-16 shrink-0 rounded-md bg-[#f2ebe2] object-cover" />
+                        <RemoteImage src={item.image} alt={item.name} className="h-16 w-16 shrink-0 rounded-md bg-[#f2ebe2] object-cover" />
                         <div className="min-w-0 flex-1">
                           <h3 className="text-xs font-medium leading-5">{item.name}</h3>
                           <p className="mt-1 text-[10px] text-[#898177]">{item.variant} <span className="mx-1">|</span> {item.quantity} ×</p>

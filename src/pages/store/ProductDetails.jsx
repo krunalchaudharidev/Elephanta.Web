@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import RemoteImage from "../../components/store/RemoteImage";
 import ProductReviews from "../../components/store/ProductReviews";
 import YouMayAlsoLike from "../../components/store/YouMayAlsoLike";
+import CartActionButton from "../../components/store/CartActionButton";
 import {
   getProduct,
   getProductFaqs,
@@ -12,10 +13,10 @@ import {
   getWishlist,
   removeFromWishlist,
 } from "../../services/wishlistapi";
+import { getCartItemsForProducts, getCartSessionId } from "../../services/cartapi";
 import { getWebsiteSetting } from "../../services/websitesettingsapi";
 import {
   Heart,
-  ShoppingCart,
   Star,
   ChevronRight,
   ChevronLeft,
@@ -70,7 +71,6 @@ const descriptionTagsToRemove = new Set([
   "style",
   "svg",
 ]);
-
 function renderDescriptionHtml(html) {
   const parsed = new DOMParser().parseFromString(html, "text/html");
 
@@ -120,6 +120,8 @@ export default function ProductDetails() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(true);
   const [wishlistUpdating, setWishlistUpdating] = useState(false);
+  const [cartLoading, setCartLoading] = useState(true);
+  const [cartItem, setCartItem] = useState(null);
   const [activeTab, setActiveTab] = useState("description");
   const [notification, setNotification] = useState("");
   const [freeShippingOnOrdersAbove, setFreeShippingOnOrdersAbove] = useState(2000);
@@ -306,6 +308,46 @@ export default function ProductDetails() {
     };
   }, [id]);
 
+  useEffect(() => {
+    if (!product?.id || String(product.id) !== String(id)) return undefined;
+    let cancelled = false;
+
+    async function loadCartItem() {
+      setCartLoading(true);
+      setCartItem(null);
+      try {
+        const sessionId = getCartSessionId();
+        const items = await getCartItemsForProducts([product.id], sessionId);
+        const item = items.get(String(product.id).toLowerCase());
+        if (!cancelled) {
+          setCartItem(
+            item
+              ? {
+                  id: item.id ?? item.Id,
+                  quantity: Number(item.quantity ?? item.Quantity) || 1,
+                }
+              : null
+          );
+          if (item) {
+            setQuantity(Math.max(1, Number(item.quantity ?? item.Quantity) || 1));
+          }
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load cart item.", error);
+          showNotification(error?.message || "Unable to load your cart.");
+        }
+      } finally {
+        if (!cancelled) setCartLoading(false);
+      }
+    }
+
+    loadCartItem();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, product?.id]);
+
   const discount =
     product?.compareAtPrice > product?.price
       ? Math.round(
@@ -338,13 +380,6 @@ export default function ProductDetails() {
     } finally {
       setWishlistUpdating(false);
     }
-  };
-
-  const handleAddToCart = () => {
-    if (!product || !product.isActive || !product.isCategoryActive || product.stockQuantity <= product.reservedQuantity) {
-      return;
-    }
-    showNotification(`${quantity} item(s) added to your cart.`);
   };
 
   const changeImage = (direction) => {
@@ -596,20 +631,38 @@ export default function ProductDetails() {
 
             {/* Purchase actions */}
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <button
-                onClick={handleAddToCart}
-                disabled={!isAvailable}
-                className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#102722] px-5 py-3 text-xs font-medium text-white transition hover:bg-[#a78051] disabled:cursor-not-allowed disabled:bg-gray-400"
-              >
-                <ShoppingCart size={17} />
-                {isAvailable ? "Add to Cart" : "Unavailable"}
-              </button>
+              <CartActionButton
+                productId={product.id}
+                quantity={quantity}
+                cartItem={cartItem}
+                onCartItemChange={setCartItem}
+                cartLoading={cartLoading}
+                isAvailable={isAvailable}
+                allowRemove
+                removePlacement="inline"
+                showCartQuantity
+                productName={product.name}
+                className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#102722] px-4 py-3 text-xs font-medium text-white transition hover:bg-[#a78051] disabled:cursor-not-allowed disabled:bg-gray-400"
+                removeClassName="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-[#dfd4c7] text-[#7b5d42] transition hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                onSuccess={({ removed, updated, quantity: addedQuantity }) =>
+                  showNotification(
+                    removed
+                      ? "Removed from your cart."
+                      : updated
+                        ? "Your cart has been updated."
+                        : `${addedQuantity} item(s) added to your cart.`
+                  )
+                }
+                onError={(error) =>
+                  showNotification(error?.message || "Unable to update your cart.")
+                }
+              />
 
               <button
                 onClick={handleWishlistToggle}
                 disabled={wishlistLoading || wishlistUpdating}
                 aria-pressed={isFavorite}
-                className="flex min-h-12 items-center justify-center gap-2 rounded-md border border-[#dfd4c7] bg-white px-5 py-3 text-xs font-medium transition hover:border-[#a78051] hover:text-[#a78051]"
+                className="flex min-h-12 w-full self-start items-center justify-center gap-2 rounded-md border border-[#dfd4c7] bg-white px-5 py-3 text-xs font-medium transition hover:border-[#a78051] hover:text-[#a78051]"
               >
                 <Heart
                   size={17}

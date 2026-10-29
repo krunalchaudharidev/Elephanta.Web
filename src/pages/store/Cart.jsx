@@ -1,9 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
   ChevronRight,
-  Gift,
   Heart,
   Minus,
   Plus,
@@ -14,38 +13,59 @@ import {
   Truck,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
+import RemoteImage from '../../components/store/RemoteImage'
+import {
+  addCartItem,
+  deleteCartItem,
+  getAllCartItems,
+  getCartSessionId,
+  updateCartItem,
+} from '../../services/cartapi'
+import { getProduct } from '../../services/productapi'
+import { getWebsiteSetting } from '../../services/websitesettingsapi'
 
-const initialItems = [
-  {
-    id: 1,
-    name: 'Royal Kundan Bridal Necklace',
-    category: 'Necklaces',
-    variant: 'Gold Plated',
-    price: 20200,
-    quantity: 1,
-    image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=500&q=85',
-  },
-  {
-    id: 2,
-    name: 'Pearl Drop Statement Earrings',
-    category: 'Earrings',
-    variant: 'Pearl White',
-    price: 7700,
-    quantity: 1,
-    image: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=500&q=85',
-  },
-  {
-    id: 3,
-    name: 'Elegant Solitaire Crystal Ring',
-    category: 'Rings',
-    variant: 'Silver Tone',
-    price: 4000,
-    quantity: 1,
-    image: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=500&q=85',
-  },
-]
+const DEFAULT_FREE_SHIPPING_THRESHOLD = 2000
 
-const FREE_SHIPPING_THRESHOLD = 2000
+async function mapCartItem(item) {
+  const productId = item?.productId ?? item?.ProductId
+  let product = null
+  if (productId) {
+    try {
+      product = await getProduct(productId)
+    } catch (error) {
+      console.error(`Failed to load product details for cart item ${item?.id ?? item?.Id}.`, error)
+    }
+  }
+
+  const imageIds = product?.imageIds ?? product?.ImageIds ?? []
+  const primaryImageId =
+    item?.primaryImageId ??
+    item?.PrimaryImageId ??
+    product?.primaryImageId ??
+    product?.PrimaryImageId ??
+    imageIds[0] ??
+    null
+  const price = Number(item?.unitPrice ?? item?.UnitPrice ?? 0)
+  const quantity = Number(item?.quantity ?? item?.Quantity ?? 1)
+  const image =
+    item?.image ??
+    item?.Image ??
+    (primaryImageId
+      ? `/api/Media/${encodeURIComponent(primaryImageId)}`
+      : '')
+
+  return {
+    id: item?.id ?? item?.Id,
+    productId,
+    name: item?.productName ?? item?.ProductName ?? product?.name ?? product?.Name ?? 'Product',
+    category: item?.category ?? item?.Category ?? product?.categoryName ?? product?.CategoryName ?? '',
+    variant: item?.variant ?? item?.Variant ?? product?.variant ?? product?.Variant ?? '',
+    price: Number.isFinite(price) ? price : 0,
+    quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+    image,
+    primaryImageId,
+  }
+}
 
 const formatPrice = (price) => new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -55,53 +75,184 @@ const formatPrice = (price) => new Intl.NumberFormat('en-IN', {
 
 export default function Cart() {
   const location = useLocation()
-  const [items, setItems] = useState(() => location.state?.items ?? initialItems)
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [notification, setNotification] = useState('')
+  const [reloadCount, setReloadCount] = useState(0)
+  const [busyItemIds, setBusyItemIds] = useState([])
+  const busyItemIdsRef = useRef(new Set())
   const [savedItems, setSavedItems] = useState([])
   const [coupon, setCoupon] = useState(() => location.state?.appliedCoupon ?? '')
   const [appliedCoupon, setAppliedCoupon] = useState(() => location.state?.appliedCoupon ?? '')
   const [couponMessage, setCouponMessage] = useState('')
   const [giftWrap, setGiftWrap] = useState(() => location.state?.giftWrap ?? false)
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState(
+    DEFAULT_FREE_SHIPPING_THRESHOLD
+  )
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadWebsiteSettings() {
+      try {
+        const settings = await getWebsiteSetting()
+        const threshold =
+          settings?.freeShippingOnOrdersAbove ??
+          settings?.FreeShippingOnOrdersAbove
+        if (threshold !== undefined && threshold !== null) {
+          const value = Number(threshold)
+          if (!cancelled && Number.isFinite(value) && value >= 0) {
+            setFreeShippingThreshold(value)
+          }
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to load website settings for cart shipping.', error)
+        }
+      }
+    }
+
+    loadWebsiteSettings()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadCart() {
+      setLoading(true)
+      setLoadError('')
+      try {
+        const cartItems = await getAllCartItems(getCartSessionId())
+        const mappedItems = await Promise.all(cartItems.map(mapCartItem))
+        if (!cancelled) setItems(mappedItems)
+      } catch (error) {
+        if (!cancelled) {
+          console.error('Failed to load cart items.', error)
+          setLoadError(error?.message || 'Unable to load your cart.')
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    loadCart()
+    return () => {
+      cancelled = true
+    }
+  }, [reloadCount])
 
   const subtotal = useMemo(
     () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
     [items]
   )
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0)
-  const shipping = subtotal === 0 || subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : 99
+  const shipping = subtotal === 0 || subtotal >= freeShippingThreshold ? 0 : 99
   const discount = appliedCoupon === 'WELCOME10' ? Math.round(subtotal * 0.1) : 0
   const giftWrapPrice = giftWrap && items.length > 0 ? 99 : 0
   const total = Math.max(0, subtotal - discount) + shipping + giftWrapPrice
 
-  function updateQuantity(id, amount) {
-    setItems((current) => current.map((item) => (
-      item.id === id
-        ? { ...item, quantity: Math.max(1, Math.min(99, item.quantity + amount)) }
-        : item
-    )))
+  function showCartNotification(message) {
+    setNotification(message)
+    window.setTimeout(() => setNotification(''), 2500)
   }
 
-  function removeItem(id) {
-    setItems((current) => current.filter((item) => item.id !== id))
+  function setItemBusy(id, isBusy) {
+    const key = String(id)
+    if (isBusy) busyItemIdsRef.current.add(key)
+    else busyItemIdsRef.current.delete(key)
+    setBusyItemIds(Array.from(busyItemIdsRef.current))
   }
 
-  function saveForLater(item) {
-    setSavedItems((current) => current.some((saved) => saved.id === item.id)
-      ? current
-      : [...current, item])
-    removeItem(item.id)
+  async function updateQuantity(id, amount) {
+    const item = items.find((current) => String(current.id) === String(id))
+    if (!item || busyItemIdsRef.current.has(String(id))) return
+
+    const quantity = Math.max(1, Math.min(99, item.quantity + amount))
+    if (quantity === item.quantity) return
+
+    setItemBusy(id, true)
+    try {
+      await updateCartItem(id, quantity, getCartSessionId())
+      setItems((current) => current.map((cartItem) => (
+        String(cartItem.id) === String(id)
+          ? { ...cartItem, quantity }
+          : cartItem
+      )))
+    } catch (error) {
+      console.error('Failed to update cart item quantity.', error)
+      showCartNotification(error?.message || 'Unable to update item quantity.')
+    } finally {
+      setItemBusy(id, false)
+    }
   }
 
-  function moveToCart(item) {
-    setItems((current) => {
-      const existing = current.find((product) => product.id === item.id)
+  async function removeItem(id) {
+    const item = items.find((current) => String(current.id) === String(id))
+    if (!item || busyItemIdsRef.current.has(String(id))) return false
+
+    setItemBusy(id, true)
+    try {
+      await deleteCartItem(id, getCartSessionId())
+      setItems((current) => current.filter(
+        (cartItem) => String(cartItem.id) !== String(id)
+      ))
+      return true
+    } catch (error) {
+      console.error('Failed to remove cart item.', error)
+      showCartNotification(error?.message || 'Unable to remove item from cart.')
+      return false
+    } finally {
+      setItemBusy(id, false)
+    }
+  }
+
+  async function saveForLater(item) {
+    if (await removeItem(item.id)) {
+      setSavedItems((current) => current.some((saved) => saved.id === item.id)
+        ? current
+        : [...current, item])
+      showCartNotification('Item saved for later.')
+    }
+  }
+
+  async function moveToCart(item) {
+    const lockId = item.productId
+    if (!lockId || busyItemIdsRef.current.has(String(lockId))) return
+
+    setItemBusy(lockId, true)
+    try {
+      const existing = items.find(
+        (cartItem) => String(cartItem.productId).toLowerCase() ===
+          String(item.productId).toLowerCase()
+      )
       if (existing) {
-        return current.map((product) => product.id === item.id
-          ? { ...product, quantity: Math.min(99, product.quantity + item.quantity) }
-          : product)
+        const quantity = Math.min(99, existing.quantity + item.quantity)
+        await updateCartItem(existing.id, quantity, getCartSessionId())
+        setItems((current) => current.map((cartItem) => (
+          String(cartItem.id) === String(existing.id)
+            ? { ...cartItem, quantity }
+            : cartItem
+        )))
+      } else {
+        const response = await addCartItem(
+          item.productId,
+          item.quantity,
+          getCartSessionId()
+        )
+        setItems((current) => [...current, mapCartItem(response)])
       }
-      return [...current, item]
-    })
-    setSavedItems((current) => current.filter((product) => product.id !== item.id))
+      setSavedItems((current) => current.filter((saved) => saved.id !== item.id))
+      showCartNotification('Item moved to your cart.')
+    } catch (error) {
+      console.error('Failed to move saved item to cart.', error)
+      showCartNotification(error?.message || 'Unable to move item to cart.')
+    } finally {
+      setItemBusy(lockId, false)
+    }
   }
 
   function applyCoupon(event) {
@@ -152,7 +303,27 @@ export default function Cart() {
       </div>
 
       <section className="mx-auto max-w-7xl px-5 py-8 sm:px-10 sm:py-12 lg:px-14">
-        {items.length === 0 ? (
+        {notification && (
+          <p role="status" className="mb-5 rounded-md bg-[#f2eee7] p-3 text-sm text-[#5f574e]">
+            {notification}
+          </p>
+        )}
+        {loading ? (
+          <p role="status" className="py-16 text-center text-sm text-[#827b72]">
+            Loading your cart...
+          </p>
+        ) : loadError ? (
+          <div className="py-16 text-center">
+            <p role="alert" className="text-sm text-red-700">{loadError}</p>
+            <button
+              type="button"
+              onClick={() => setReloadCount((current) => current + 1)}
+              className="mt-5 rounded-md bg-[#152c24] px-5 py-3 text-xs font-medium text-white transition hover:bg-[#a77b4c]"
+            >
+              Try Again
+            </button>
+          </div>
+        ) : items.length === 0 ? (
           <div className="mx-auto max-w-lg py-16 text-center sm:py-24">
             <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#f2e9de] text-[#a77b4c]">
               <ShoppingBag size={32} strokeWidth={1.3} />
@@ -181,24 +352,35 @@ export default function Cart() {
               <div className="divide-y divide-[#e9e1d7] border-y border-[#e9e1d7]">
                 {items.map((item) => (
                   <article key={item.id} className="grid grid-cols-[88px_1fr] gap-4 py-5 sm:grid-cols-[120px_1fr] sm:gap-5 sm:py-6">
-                    <Link to={`/store/products/${item.id}`} className="block aspect-[4/5] overflow-hidden rounded-md bg-[#f0e8de]">
-                      <img src={item.image} alt={item.name} className="h-full w-full object-cover transition duration-500 hover:scale-105" />
+                    <Link to={`/store/products/${encodeURIComponent(item.productId)}`} className="block aspect-[4/5] overflow-hidden rounded-md bg-[#f0e8de]">
+                      <RemoteImage
+                        src={item.primaryImageId
+                          ? `/api/Media/${encodeURIComponent(item.primaryImageId)}`
+                          : item.image}
+                        alt={item.name}
+                        className="h-full w-full object-cover transition duration-500 hover:scale-105"
+                      />
                     </Link>
 
                     <div className="min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="text-[9px] uppercase tracking-[0.14em] text-[#a77b4c]">{item.category}</p>
-                          <Link to={`/store/products/${item.id}`} className="mt-1 block font-serif text-base leading-snug transition hover:text-[#a77b4c] sm:text-lg">
+                          {item.category && (
+                            <p className="text-[9px] uppercase tracking-[0.14em] text-[#a77b4c]">{item.category}</p>
+                          )}
+                          <Link to={`/store/products/${encodeURIComponent(item.productId)}`} className="mt-1 block font-serif text-base leading-snug transition hover:text-[#a77b4c] sm:text-lg">
                             {item.name}
                           </Link>
-                          <p className="mt-2 text-[11px] text-[#827b72]">Style: {item.variant}</p>
+                          {item.variant && (
+                            <p className="mt-2 text-[11px] text-[#827b72]">Style: {item.variant}</p>
+                          )}
                         </div>
                         <button
                           type="button"
                           onClick={() => removeItem(item.id)}
+                          disabled={busyItemIds.includes(String(item.id))}
                           aria-label={`Remove ${item.name}`}
-                          className="shrink-0 p-1 text-[#92887e] transition hover:text-red-600"
+                          className="shrink-0 p-1 text-[#92887e] transition hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -210,7 +392,7 @@ export default function Cart() {
                           <button
                             type="button"
                             onClick={() => updateQuantity(item.id, -1)}
-                            disabled={item.quantity <= 1}
+                            disabled={item.quantity <= 1 || busyItemIds.includes(String(item.id))}
                             aria-label={`Decrease quantity of ${item.name}`}
                             className="px-2.5 text-[#746a60] hover:text-[#a77b4c] disabled:opacity-30"
                           >
@@ -220,7 +402,7 @@ export default function Cart() {
                           <button
                             type="button"
                             onClick={() => updateQuantity(item.id, 1)}
-                            disabled={item.quantity >= 99}
+                            disabled={item.quantity >= 99 || busyItemIds.includes(String(item.id))}
                             aria-label={`Increase quantity of ${item.name}`}
                             className="px-2.5 text-[#746a60] hover:text-[#a77b4c] disabled:opacity-30"
                           >
@@ -246,26 +428,17 @@ export default function Cart() {
                 <Truck size={19} className="mt-0.5 shrink-0 text-[#a77b4c]" />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium">
-                    {subtotal >= FREE_SHIPPING_THRESHOLD
+                    {subtotal >= freeShippingThreshold
                       ? "You've unlocked free shipping!"
-                      : `Add ${formatPrice(FREE_SHIPPING_THRESHOLD - subtotal)} more for free shipping.`}
+                      : `Add ${formatPrice(freeShippingThreshold - subtotal)} more for free shipping.`}
                   </p>
-                  <p className="mt-1 text-[10px] leading-5 text-[#827b72]">Free shipping on orders above {formatPrice(FREE_SHIPPING_THRESHOLD)}.</p>
+                  <p className="mt-1 text-[10px] leading-5 text-[#827b72]">Free shipping on orders above {formatPrice(freeShippingThreshold)}.</p>
                   <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#e2d8cb]">
-                    <div className="h-full rounded-full bg-[#a77b4c] transition-all" style={{ width: `${Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100)}%` }} />
+                    <div className="h-full rounded-full bg-[#a77b4c] transition-all" style={{ width: `${freeShippingThreshold === 0 ? 100 : Math.min(100, (subtotal / freeShippingThreshold) * 100)}%` }} />
                   </div>
                 </div>
               </div>
 
-              <label className="mt-5 flex cursor-pointer items-start gap-3 border border-[#e9e1d7] bg-white p-4 sm:p-5">
-                <input type="checkbox" checked={giftWrap} onChange={(event) => setGiftWrap(event.target.checked)} className="mt-1 accent-[#a77b4c]" />
-                <Gift size={20} className="shrink-0 text-[#a77b4c]" />
-                <span className="flex-1">
-                  <span className="block text-xs font-medium">Make it a gift</span>
-                  <span className="mt-1 block text-[10px] leading-5 text-[#827b72]">Add premium gift wrapping to your order.</span>
-                </span>
-                <span className="text-xs font-medium">{formatPrice(99)}</span>
-              </label>
             </div>
 
             <aside className="rounded-lg border border-[#e9e1d7] bg-white p-5 sm:p-7 lg:sticky lg:top-24">
