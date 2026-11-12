@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
@@ -11,18 +11,24 @@ import {
   Tag,
   Trash2,
   Truck,
+  X,
 } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import RemoteImage from '../../components/store/RemoteImage'
 import {
-  addCartItem,
+  applyCartCoupon,
   deleteCartItem,
   getAllCartItems,
   getCartSessionId,
+  getCartSummary,
+  removeCartCoupon,
   updateCartItem,
 } from '../../services/cartapi'
+import { loadCustomerAuth } from '../../services/authapi'
+import { searchOffers } from '../../services/offerapi'
 import { getProduct } from '../../services/productapi'
 import { getWebsiteSetting } from '../../services/websitesettingsapi'
+import { addToWishlist } from '../../services/wishlistapi'
 
 const DEFAULT_FREE_SHIPPING_THRESHOLD = 2000
 
@@ -47,6 +53,13 @@ async function mapCartItem(item) {
     null
   const price = Number(item?.unitPrice ?? item?.UnitPrice ?? 0)
   const quantity = Number(item?.quantity ?? item?.Quantity ?? 1)
+  const rawStockQuantity =
+    item?.stockQuantity ??
+    item?.StockQuantity ??
+    product?.stockQuantity ??
+    product?.StockQuantity ??
+    0
+  const stockQuantity = Number(rawStockQuantity)
   const image =
     item?.image ??
     item?.Image ??
@@ -62,6 +75,7 @@ async function mapCartItem(item) {
     variant: item?.variant ?? item?.Variant ?? product?.variant ?? product?.Variant ?? '',
     price: Number.isFinite(price) ? price : 0,
     quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+    stockQuantity: Number.isFinite(stockQuantity) && stockQuantity >= 0 ? stockQuantity : 0,
     image,
     primaryImageId,
   }
@@ -73,19 +87,68 @@ const formatPrice = (price) => new Intl.NumberFormat('en-IN', {
   maximumFractionDigits: 0,
 }).format(price)
 
+function getSummaryAmount(summary, camelCaseName, pascalCaseName) {
+  const value = Number(summary?.[camelCaseName] ?? summary?.[pascalCaseName])
+  if (!Number.isFinite(value)) {
+    throw new Error(`Cart summary response has an invalid ${pascalCaseName}.`)
+  }
+  return value
+}
+
+function normalizeCartSummary(summary) {
+  if (!summary || typeof summary !== 'object') {
+    throw new Error('Cart summary response is invalid.')
+  }
+
+  const couponCode = summary.couponCode ?? summary.CouponCode ?? ''
+  const couponError = summary.couponError ?? summary.CouponError ?? ''
+  const responseCouponValid = summary.couponValid ?? summary.CouponValid
+  if (
+    responseCouponValid !== undefined &&
+    responseCouponValid !== null &&
+    typeof responseCouponValid !== 'boolean'
+  ) {
+    throw new Error('Cart summary response has an invalid CouponValid.')
+  }
+  const couponValid =
+    responseCouponValid ?? Boolean(couponCode && !couponError)
+
+  return {
+    subtotal: getSummaryAmount(summary, 'subtotal', 'Subtotal'),
+    couponCode,
+    couponValid,
+    couponError,
+    couponDiscount: getSummaryAmount(summary, 'couponDiscount', 'CouponDiscount'),
+    shippingCharges: getSummaryAmount(summary, 'shippingCharges', 'ShippingCharges'),
+    finalPayableAmount: getSummaryAmount(
+      summary,
+      'finalPayableAmount',
+      'FinalPayableAmount'
+    ),
+  }
+}
+
 export default function Cart() {
   const location = useLocation()
   const [items, setItems] = useState([])
+  const [cartSummary, setCartSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [notification, setNotification] = useState('')
   const [reloadCount, setReloadCount] = useState(0)
   const [busyItemIds, setBusyItemIds] = useState([])
   const busyItemIdsRef = useRef(new Set())
-  const [savedItems, setSavedItems] = useState([])
+  const [wishlistSavingIds, setWishlistSavingIds] = useState([])
+  const wishlistSavingIdsRef = useRef(new Set())
+  const [guestSaveItem, setGuestSaveItem] = useState(null)
   const [coupon, setCoupon] = useState(() => location.state?.appliedCoupon ?? '')
   const [appliedCoupon, setAppliedCoupon] = useState(() => location.state?.appliedCoupon ?? '')
   const [couponMessage, setCouponMessage] = useState('')
+  const [couponMessageIsError, setCouponMessageIsError] = useState(false)
+  const [couponBusy, setCouponBusy] = useState(false)
+  const [offers, setOffers] = useState([])
+  const [offersLoading, setOffersLoading] = useState(true)
+  const [offersError, setOffersError] = useState('')
   const [giftWrap, setGiftWrap] = useState(() => location.state?.giftWrap ?? false)
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(
     DEFAULT_FREE_SHIPPING_THRESHOLD
@@ -122,13 +185,56 @@ export default function Cart() {
   useEffect(() => {
     let cancelled = false
 
+    async function loadOffers() {
+      setOffersLoading(true)
+      setOffersError('')
+      try {
+        const response = await searchOffers({
+          isActive: true,
+          includeExpired: false,
+          pageNumber: 1,
+          pageSize: 100,
+        })
+        if (!cancelled) {
+          setOffers(response?.items ?? response?.Items ?? [])
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setOffersError(error?.message || 'Unable to load available offers.')
+        }
+      } finally {
+        if (!cancelled) setOffersLoading(false)
+      }
+    }
+
+    loadOffers()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
     async function loadCart() {
       setLoading(true)
       setLoadError('')
       try {
-        const cartItems = await getAllCartItems(getCartSessionId())
+        const sessionId = getCartSessionId()
+        const [cartItems, summaryResponse] = await Promise.all([
+          getAllCartItems(sessionId),
+          getCartSummary(sessionId),
+        ])
         const mappedItems = await Promise.all(cartItems.map(mapCartItem))
-        if (!cancelled) setItems(mappedItems)
+        const summary = normalizeCartSummary(summaryResponse)
+        if (!cancelled) {
+          setItems(mappedItems)
+          setCartSummary(summary)
+          setCoupon(summary.couponCode)
+          setAppliedCoupon(summary.couponValid ? summary.couponCode : '')
+          setCouponMessage(summary.couponError)
+          setCouponMessageIsError(Boolean(summary.couponError))
+        }
       } catch (error) {
         if (!cancelled) {
           console.error('Failed to load cart items.', error)
@@ -145,15 +251,12 @@ export default function Cart() {
     }
   }, [reloadCount])
 
-  const subtotal = useMemo(
-    () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
-    [items]
-  )
+  const subtotal = cartSummary?.subtotal ?? 0
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0)
-  const shipping = subtotal === 0 || subtotal >= freeShippingThreshold ? 0 : 99
-  const discount = appliedCoupon === 'WELCOME10' ? Math.round(subtotal * 0.1) : 0
+  const shipping = cartSummary?.shippingCharges ?? 0
+  const discount = cartSummary?.couponDiscount ?? 0
   const giftWrapPrice = giftWrap && items.length > 0 ? 99 : 0
-  const total = Math.max(0, subtotal - discount) + shipping + giftWrapPrice
+  const total = (cartSummary?.finalPayableAmount ?? 0) + giftWrapPrice
 
   function showCartNotification(message) {
     setNotification(message)
@@ -167,21 +270,53 @@ export default function Cart() {
     setBusyItemIds(Array.from(busyItemIdsRef.current))
   }
 
+  function updateSummaryState(summaryResponse) {
+    const summary = normalizeCartSummary(summaryResponse)
+    setCartSummary(summary)
+    setAppliedCoupon(summary.couponValid ? summary.couponCode : '')
+    return summary
+  }
+
+  async function refreshCartSummary() {
+    try {
+      const summary = updateSummaryState(
+        await getCartSummary(getCartSessionId())
+      )
+      setCouponMessage(summary.couponError)
+      setCouponMessageIsError(Boolean(summary.couponError))
+    } catch (error) {
+      console.error('Failed to refresh cart summary.', error)
+      showCartNotification(error?.message || 'Unable to refresh your order summary.')
+    }
+  }
+
   async function updateQuantity(id, amount) {
     const item = items.find((current) => String(current.id) === String(id))
     if (!item || busyItemIdsRef.current.has(String(id))) return
 
     const quantity = Math.max(1, Math.min(99, item.quantity + amount))
     if (quantity === item.quantity) return
+    if (amount > 0 && quantity > item.stockQuantity) {
+      showCartNotification(`Only ${item.stockQuantity} item(s) are available in stock.`)
+      return
+    }
 
     setItemBusy(id, true)
     try {
-      await updateCartItem(id, quantity, getCartSessionId())
+      const updatedItem = await updateCartItem(id, quantity, getCartSessionId())
+      const responseQuantity = Number(
+        updatedItem?.quantity ?? updatedItem?.Quantity
+      )
+      const savedQuantity =
+        Number.isFinite(responseQuantity) && responseQuantity > 0
+          ? responseQuantity
+          : quantity
       setItems((current) => current.map((cartItem) => (
         String(cartItem.id) === String(id)
-          ? { ...cartItem, quantity }
+          ? { ...cartItem, quantity: savedQuantity }
           : cartItem
       )))
+      await refreshCartSummary()
     } catch (error) {
       console.error('Failed to update cart item quantity.', error)
       showCartNotification(error?.message || 'Unable to update item quantity.')
@@ -200,6 +335,7 @@ export default function Cart() {
       setItems((current) => current.filter(
         (cartItem) => String(cartItem.id) !== String(id)
       ))
+      await refreshCartSummary()
       return true
     } catch (error) {
       console.error('Failed to remove cart item.', error)
@@ -211,62 +347,90 @@ export default function Cart() {
   }
 
   async function saveForLater(item) {
-    if (await removeItem(item.id)) {
-      setSavedItems((current) => current.some((saved) => saved.id === item.id)
-        ? current
-        : [...current, item])
-      showCartNotification('Item saved for later.')
+    if (!loadCustomerAuth()?.accessToken) {
+      setGuestSaveItem(item)
+      return
     }
-  }
 
-  async function moveToCart(item) {
-    const lockId = item.productId
-    if (!lockId || busyItemIdsRef.current.has(String(lockId))) return
+    const lockId = String(item.id)
+    if (wishlistSavingIdsRef.current.has(lockId)) return
 
-    setItemBusy(lockId, true)
+    wishlistSavingIdsRef.current.add(lockId)
+    setWishlistSavingIds(Array.from(wishlistSavingIdsRef.current))
     try {
-      const existing = items.find(
-        (cartItem) => String(cartItem.productId).toLowerCase() ===
-          String(item.productId).toLowerCase()
-      )
-      if (existing) {
-        const quantity = Math.min(99, existing.quantity + item.quantity)
-        await updateCartItem(existing.id, quantity, getCartSessionId())
-        setItems((current) => current.map((cartItem) => (
-          String(cartItem.id) === String(existing.id)
-            ? { ...cartItem, quantity }
-            : cartItem
-        )))
-      } else {
-        const response = await addCartItem(
-          item.productId,
-          item.quantity,
-          getCartSessionId()
-        )
-        setItems((current) => [...current, mapCartItem(response)])
+      await addToWishlist(item.productId)
+      if (await removeItem(item.id)) {
+        showCartNotification('Item saved to your wishlist and removed from your cart.')
       }
-      setSavedItems((current) => current.filter((saved) => saved.id !== item.id))
-      showCartNotification('Item moved to your cart.')
     } catch (error) {
-      console.error('Failed to move saved item to cart.', error)
-      showCartNotification(error?.message || 'Unable to move item to cart.')
+      console.error('Failed to save cart item to wishlist.', error)
+      showCartNotification(error?.message || 'Unable to save item to your wishlist.')
     } finally {
-      setItemBusy(lockId, false)
+      wishlistSavingIdsRef.current.delete(lockId)
+      setWishlistSavingIds(Array.from(wishlistSavingIdsRef.current))
     }
   }
 
-  function applyCoupon(event) {
+  async function removeGuestSaveItem() {
+    if (guestSaveItem && await removeItem(guestSaveItem.id)) {
+      setGuestSaveItem(null)
+    }
+  }
+
+  async function applyCoupon(event) {
     event.preventDefault()
     const code = coupon.trim().toUpperCase()
     if (!code) {
-      setAppliedCoupon('')
       setCouponMessage('Please enter a coupon code.')
-    } else if (code === 'WELCOME10') {
-      setAppliedCoupon(code)
-      setCouponMessage('Welcome! Your 10% discount has been applied.')
-    } else {
-      setAppliedCoupon('')
-      setCouponMessage('Invalid coupon code. Please try again.')
+      setCouponMessageIsError(true)
+      return
+    }
+
+    setCouponBusy(true)
+    setCouponMessage('')
+    setCouponMessageIsError(false)
+    try {
+      const summary = updateSummaryState(
+        await applyCartCoupon(code, getCartSessionId())
+      )
+      const appliedCode = summary.couponValid
+        ? summary.couponCode || code
+        : ''
+      setCoupon(appliedCode || code)
+      setCouponMessage(
+        summary.couponValid
+          ? 'Coupon applied.'
+          : summary.couponError || 'This coupon could not be applied.'
+      )
+      setCouponMessageIsError(!summary.couponValid)
+    } catch (error) {
+      console.error('Failed to apply cart coupon.', error)
+      setCouponMessage(error?.message || 'Unable to apply this coupon.')
+      setCouponMessageIsError(true)
+    } finally {
+      setCouponBusy(false)
+    }
+  }
+
+  async function removeCoupon() {
+    if (!cartSummary?.couponCode && !appliedCoupon) return
+
+    setCouponBusy(true)
+    setCouponMessage('')
+    setCouponMessageIsError(false)
+    try {
+      const summary = updateSummaryState(
+        await removeCartCoupon(getCartSessionId())
+      )
+      setCoupon(summary.couponCode)
+      setCouponMessage(summary.couponError || 'Coupon removed.')
+      setCouponMessageIsError(Boolean(summary.couponError))
+    } catch (error) {
+      console.error('Failed to remove cart coupon.', error)
+      setCouponMessage(error?.message || 'Unable to remove this coupon.')
+      setCouponMessageIsError(true)
+    } finally {
+      setCouponBusy(false)
     }
   }
 
@@ -402,7 +566,7 @@ export default function Cart() {
                           <button
                             type="button"
                             onClick={() => updateQuantity(item.id, 1)}
-                            disabled={item.quantity >= 99 || busyItemIds.includes(String(item.id))}
+                            disabled={item.quantity >= Math.min(99, item.stockQuantity) || busyItemIds.includes(String(item.id))}
                             aria-label={`Increase quantity of ${item.name}`}
                             className="px-2.5 text-[#746a60] hover:text-[#a77b4c] disabled:opacity-30"
                           >
@@ -411,13 +575,17 @@ export default function Cart() {
                         </div>
                         <p className="text-xs font-semibold sm:text-sm">{formatPrice(item.price * item.quantity)}</p>
                       </div>
+                      <p className="mt-1 text-[10px] text-[#827b72]">
+                        {item.stockQuantity} available in stock
+                      </p>
                       <button
                         type="button"
                         onClick={() => saveForLater(item)}
-                        className="mt-4 inline-flex items-center gap-1.5 text-[10px] text-[#827b72] transition hover:text-[#a77b4c]"
+                        disabled={wishlistSavingIds.includes(String(item.id)) || busyItemIds.includes(String(item.id))}
+                        className="mt-4 inline-flex items-center gap-1.5 text-[10px] text-[#827b72] transition hover:text-[#a77b4c] disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Heart size={13} />
-                        Save for later
+                        {wishlistSavingIds.includes(String(item.id)) ? 'Saving...' : 'Save for later'}
                       </button>
                     </div>
                   </article>
@@ -428,7 +596,7 @@ export default function Cart() {
                 <Truck size={19} className="mt-0.5 shrink-0 text-[#a77b4c]" />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium">
-                    {subtotal >= freeShippingThreshold
+                    {shipping === 0
                       ? "You've unlocked free shipping!"
                       : `Add ${formatPrice(freeShippingThreshold - subtotal)} more for free shipping.`}
                   </p>
@@ -454,7 +622,9 @@ export default function Cart() {
                 </div>
                 {discount > 0 && (
                   <div className="flex justify-between gap-3 text-[#548365]">
-                    <span>Coupon discount (10%)</span>
+                    <span>
+                      Coupon discount{cartSummary?.couponCode ? ` (${cartSummary.couponCode})` : ''}
+                    </span>
                     <span>-{formatPrice(discount)}</span>
                   </div>
                 )}
@@ -478,18 +648,93 @@ export default function Cart() {
                     onChange={(event) => {
                       setCoupon(event.target.value)
                       setCouponMessage('')
+                      setCouponMessageIsError(false)
                     }}
                     placeholder="Enter code"
                     className="min-w-0 flex-1 rounded-md border border-[#e5dcd1] px-3 py-3 text-xs uppercase outline-none focus:border-[#a77b4c]"
                   />
-                  <button type="submit" className="rounded-md border border-[#a77b4c] px-4 text-xs font-medium text-[#936b43] transition hover:bg-[#a77b4c] hover:text-white">Apply</button>
+                  <button
+                    type="submit"
+                    disabled={couponBusy}
+                    className="rounded-md border border-[#a77b4c] px-4 text-xs font-medium text-[#936b43] transition hover:bg-[#a77b4c] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {couponBusy ? 'Please wait...' : 'Apply'}
+                  </button>
+                  {cartSummary?.couponCode && (
+                    <button
+                      type="button"
+                      onClick={removeCoupon}
+                      disabled={couponBusy}
+                      className="rounded-md border border-[#e5dcd1] px-3 text-xs font-medium text-[#827b72] transition hover:border-red-300 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
                 {couponMessage && (
-                  <p role="status" className={`mt-2 text-[10px] ${appliedCoupon ? 'text-green-700' : 'text-red-600'}`}>
+                  <p role="status" className={`mt-2 text-[10px] ${couponMessageIsError ? 'text-red-600' : 'text-green-700'}`}>
                     {couponMessage}
                   </p>
                 )}
-                <p className="mt-2 text-[10px] text-[#92887e]">Demo code: WELCOME10</p>
+                <fieldset className="mt-4">
+                  <legend className="mb-2 text-[10px] font-medium uppercase tracking-[0.16em] text-[#827b72]">
+                    Available offers
+                  </legend>
+                  {offersLoading ? (
+                    <p role="status" className="text-[10px] text-[#827b72]">Loading offers...</p>
+                  ) : offersError ? (
+                    <p role="alert" className="text-[10px] text-red-600">{offersError}</p>
+                  ) : offers.filter((offer) => offer.code ?? offer.Code).length === 0 ? (
+                    <p className="text-[10px] text-[#827b72]">No offers available right now.</p>
+                  ) : (
+                    <div className="max-h-48 space-y-2 overflow-y-auto">
+                      {offers.map((offer) => {
+                        const code = offer.code ?? offer.Code
+                        if (!code) return null
+
+                        const name = offer.name ?? offer.Name ?? 'Special offer'
+                        const discountType = offer.discountType ?? offer.DiscountType
+                        const discountValue = offer.discountValue ?? offer.DiscountValue
+                        const discountLabel = discountType?.toLowerCase() === 'percentage'
+                          ? `${discountValue}% off`
+                          : discountValue != null
+                            ? `${formatPrice(Number(discountValue))} off`
+                            : ''
+
+                        return (
+                          <label
+                            key={offer.id ?? offer.Id ?? code}
+                            className={`flex cursor-pointer items-start gap-2 rounded-md border px-3 py-2 text-[10px] transition ${
+                              coupon.trim().toUpperCase() === String(code).toUpperCase()
+                                ? 'border-[#a77b4c] bg-[#fbf8f4]'
+                                : 'border-[#e5dcd1]'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="available-coupon"
+                              value={code}
+                              checked={coupon.trim().toUpperCase() === String(code).toUpperCase()}
+                              disabled={couponBusy}
+                              onChange={() => {
+                                setCoupon(String(code))
+                                setCouponMessage('')
+                                setCouponMessageIsError(false)
+                              }}
+                              className="mt-0.5 accent-[#a77b4c]"
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="block font-medium text-[#17251f]">{name}</span>
+                              <span className="mt-0.5 block text-[#827b72]">
+                                {code}{discountLabel ? ` · ${discountLabel}` : ''}
+                              </span>
+                            </span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  )}
+                </fieldset>
               </form>
 
               <div className="mt-6 flex items-center justify-between gap-3 border-t border-[#e9e1d7] pt-5">
@@ -518,24 +763,55 @@ export default function Cart() {
           </div>
         )}
 
-        {savedItems.length > 0 && (
-          <section className="mt-14 border-t border-[#e9e1d7] pt-8">
-            <h2 className="font-serif text-2xl">Saved for Later</h2>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {savedItems.map((item) => (
-                <article key={item.id} className="flex gap-4 border border-[#e9e1d7] bg-white p-4">
-                  <img src={item.image} alt={item.name} className="h-24 w-20 rounded object-cover" />
-                  <div className="flex min-w-0 flex-1 flex-col items-start">
-                    <h3 className="text-xs font-medium">{item.name}</h3>
-                    <p className="mt-2 text-sm font-semibold">{formatPrice(item.price)}</p>
-                    <button type="button" onClick={() => moveToCart(item)} className="mt-auto inline-flex items-center gap-2 pt-3 text-xs font-medium text-[#9b7044] hover:text-[#17251f]">
-                      Move to bag <ArrowRight size={13} />
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
+        {guestSaveItem && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4 py-6"
+            onClick={() => setGuestSaveItem(null)}
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="guest-save-dialog-title"
+              className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') setGuestSaveItem(null)
+              }}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 id="guest-save-dialog-title" className="font-serif text-2xl">Save for later</h2>
+                  <p className="mt-2 text-sm leading-6 text-[#827b72]">
+                    Sign in to save this item to your wishlist, or remove it from your cart.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close dialog"
+                  onClick={() => setGuestSaveItem(null)}
+                  className="shrink-0 rounded p-1 text-[#827b72] hover:bg-[#f2eee7]"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <Link
+                  to="/login"
+                  className="flex min-h-11 items-center justify-center rounded-md bg-[#142a23] px-4 py-3 text-xs font-medium text-white transition hover:bg-[#a77b4c]"
+                >
+                  Login
+                </Link>
+                <button
+                  type="button"
+                  onClick={removeGuestSaveItem}
+                  disabled={busyItemIds.includes(String(guestSaveItem.id))}
+                  className="min-h-11 rounded-md border border-[#e5dcd1] px-4 py-3 text-xs font-medium text-[#5f574e] transition hover:bg-[#f8f5f1] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Remove from cart
+                </button>
+              </div>
+            </section>
+          </div>
         )}
       </section>
     </div>

@@ -1,12 +1,13 @@
 import { adminApiGet as apiGet, adminApiPost as apiPost, fetchWithAdminAuth as fetchWithAuth } from './api'
 import { showToast, ToastTypes } from '../components/admin/shared/Toast'
 
-export async function searchOffers({ name, code, isActive, sort, pageNumber = 1, pageSize = 10 } = {}) {
+export async function searchOffers({ name, code, isActive, includeExpired = false, sort, pageNumber = 1, pageSize = 10 } = {}) {
   const q = new URLSearchParams()
   if (name !== undefined && name !== null && String(name).trim() !== '') q.append('name', String(name))
   if (code !== undefined && code !== null && String(code).trim() !== '') q.append('code', String(code))
   if (sort) q.append('sort', String(sort))
   if (isActive !== undefined && isActive !== null) q.append('isActive', String(isActive))
+  q.append('includeExpired', String(includeExpired))
   q.append('pageNumber', String(pageNumber))
   q.append('pageSize', String(pageSize))
   return apiGet(`/api/Offer/offers/search?${q.toString()}`)

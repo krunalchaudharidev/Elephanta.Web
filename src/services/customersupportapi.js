@@ -2,11 +2,12 @@ import { adminApiGet, customerApiPost, fetchWithAdminAuth } from './api'
 
 const CUSTOMER_SUPPORT_REQUESTS_ENDPOINT = '/api/CustomerSupport/requests'
 
-export async function getCustomerSupportRequests(pageNumber = 1, pageSize = 10) {
+export async function getCustomerSupportRequests(pageNumber = 1, pageSize = 10, status = null) {
   const query = new URLSearchParams({
     pageNumber: String(pageNumber),
     pageSize: String(pageSize),
   })
+  if (status) query.set('status', status)
   return adminApiGet(`${CUSTOMER_SUPPORT_REQUESTS_ENDPOINT}?${query.toString()}`)
 }
 

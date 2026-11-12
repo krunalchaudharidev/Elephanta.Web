@@ -27,15 +27,21 @@ export default function AdminOffers() {
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
   const [isActive, setIsActive] = useState('')
+  const [includeExpired, setIncludeExpired] = useState(false)
 
-  async function loadData(pg = pageNumber) {
+  async function loadData(pg = pageNumber, filters = {}) {
     try { setLoadingContext?.(true) } catch {}
     setError(null)
     try {
+      const filterName = filters.name ?? name
+      const filterCode = filters.code ?? code
+      const filterIsActive = filters.isActive ?? isActive
+      const filterIncludeExpired = filters.includeExpired ?? includeExpired
       const res = await searchOffers({
-        name: name || undefined,
-        code: code || undefined,
-        isActive: isActive === '' ? undefined : (isActive === 'true'),
+        name: filterName || undefined,
+        code: filterCode || undefined,
+        isActive: filterIsActive === '' ? undefined : (filterIsActive === 'true'),
+        includeExpired: filterIncludeExpired,
         pageNumber: pg,
         pageSize,
       })
@@ -61,8 +67,9 @@ export default function AdminOffers() {
     setName('')
     setCode('')
     setIsActive('')
+    setIncludeExpired(false)
     setPageNumber(1)
-    loadData(1)
+    loadData(1, { name: '', code: '', isActive: '', includeExpired: false })
   }
 
   async function handleConfirmDelete() {
@@ -124,6 +131,10 @@ export default function AdminOffers() {
             <option value="false">Inactive</option>
           </select>
         </div>
+        <label className="flex items-end gap-2 pb-2 text-sm text-gray-600">
+          <input type="checkbox" checked={includeExpired} onChange={(e) => setIncludeExpired(e.target.checked)} />
+          Include expired
+        </label>
         <div className="flex items-end gap-2">
           <button type="submit" className="px-4 py-2 rounded bg-indigo-600 text-white">Search</button>
           <button type="button" onClick={handleReset} className="px-4 py-2 rounded border">Reset</button>

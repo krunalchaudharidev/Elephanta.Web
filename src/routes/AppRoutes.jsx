@@ -29,6 +29,7 @@ import StoreProductDetails from '../pages/store/ProductDetails'
 import StoreCollections from '../pages/store/Collections'
 import StoreContact from '../pages/store/Contact'
 import StoreShipping from '../pages/store/Shipping'
+import StoreOffers from '../pages/store/Offers'
 import { loadAdminAuth, clearAdminAuth, refreshToken, saveAdminAuth } from '../services/authapi'
 import { useEffect, useState } from 'react'
 
@@ -109,6 +110,7 @@ export default function AppRoutes() {
           <Route path="about" element={<Navigate to="/about" replace />} />
           <Route path="products" element={<StoreProducts />} />
           <Route path="collections" element={<StoreCollections />} />
+          <Route path="offers" element={<StoreOffers />} />
           <Route path="contact" element={<Navigate to="/contact" replace />} />
           <Route path="shipping" element={<Navigate to="/shipping-policy" replace />} />
           <Route path="shipping-policy" element={<Navigate to="/shipping-policy" replace />} />

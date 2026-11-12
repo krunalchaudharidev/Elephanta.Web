@@ -7,6 +7,11 @@ import {
   updateCartItem,
 } from '../../services/cartapi'
 
+function getResponseQuantity(response, fallback) {
+  const quantity = Number(response?.quantity ?? response?.Quantity)
+  return Number.isFinite(quantity) && quantity > 0 ? quantity : fallback
+}
+
 export default function CartActionButton({
   productId,
   quantity = 1,
@@ -48,16 +53,22 @@ export default function CartActionButton({
         onCartItemChange?.(null)
         onSuccess?.({ removed: true, quantity: cartItem.quantity })
       } else if (cartItem) {
-        await updateCartItem(cartItem.id, quantity, sessionId)
-        onCartItemChange?.({ ...cartItem, quantity })
-        onSuccess?.({ updated: true, quantity })
+        const updatedItem = await updateCartItem(cartItem.id, quantity, sessionId)
+        const updatedQuantity = getResponseQuantity(updatedItem, quantity)
+        onCartItemChange?.({ ...cartItem, quantity: updatedQuantity })
+        onSuccess?.({ updated: true, quantity: updatedQuantity })
       } else {
         const addedItem = await addCartItem(productId, quantity, sessionId)
+        const itemId = addedItem?.id ?? addedItem?.Id
+        if (itemId === null || itemId === undefined) {
+          throw new Error('The cart API did not return the created item ID.')
+        }
+        const addedQuantity = getResponseQuantity(addedItem, quantity)
         onCartItemChange?.({
-          id: addedItem?.id ?? addedItem?.Id,
-          quantity,
+          id: itemId,
+          quantity: addedQuantity,
         })
-        onSuccess?.({ updated: false, quantity })
+        onSuccess?.({ updated: false, quantity: addedQuantity })
       }
     } catch (error) {
       console.error(`Failed to ${nextAction} cart item.`, error)

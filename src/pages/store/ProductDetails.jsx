@@ -617,16 +617,13 @@ export default function ProductDetails() {
 
                 <button
                   aria-label="Increase quantity"
-                  disabled={quantity >= Math.min(10, availableStock) || !isAvailable}
-                  onClick={() => setQuantity((current) => Math.min(10, availableStock, current + 1))}
+                  disabled={quantity >= availableStock || !isAvailable}
+                  onClick={() => setQuantity((current) => Math.min(availableStock, current + 1))}
                   className="flex h-full w-10 items-center justify-center text-[#777168] transition hover:text-[#a78051] disabled:opacity-40"
                 >
                   <Plus size={15} />
                 </button>
               </div>
-              <p className="mt-2 text-[10px] text-[#91877b]">
-                Maximum {Math.min(10, availableStock)} items per order.
-              </p>
             </div>
 
             {/* Purchase actions */}

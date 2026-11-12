@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react'
-import { Outlet, Link, NavLink } from 'react-router-dom'
+import React, { useEffect, useRef, useState } from 'react'
+import { Outlet, Link, NavLink, useLocation } from 'react-router-dom'
 import { loadCustomerAuth } from '../services/authapi'
 import { getWebsiteSetting } from '../services/websitesettingsapi'
 import { searchProducts } from '../services/productapi'
+import { CART_UPDATED_EVENT, getAllCartItems, getCartSessionId } from '../services/cartapi'
 
 function getExternalUrl(value) {
   try {
@@ -14,14 +15,62 @@ function getExternalUrl(value) {
 }
 
 export default function StoreLayout() {
+  const location = useLocation()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [mobileShopOpen, setMobileShopOpen] = useState(false)
+  const [shopMenuOpen, setShopMenuOpen] = useState(false)
+  const shopMenuRef = useRef(null)
   const [socialLinks, setSocialLinks] = useState({ instagramURL: '', facebookURL: '' })
   const [searchTerm, setSearchTerm] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState('')
+  const [cartCount, setCartCount] = useState(0)
+  const cartLoadVersionRef = useRef(0)
   const [searchOpen, setSearchOpen] = useState(false)
   const accountPath = loadCustomerAuth()?.accessToken ? '/manage-profile' : '/login'
+  const isShopSection = location.pathname.startsWith('/store/products')
+    || location.pathname === '/store/collections'
+    || location.pathname === '/store/offers'
+
+  useEffect(() => {
+    function closeShopMenuOnOutsideClick(event) {
+      if (!shopMenuRef.current?.contains(event.target)) {
+        setShopMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', closeShopMenuOnOutsideClick)
+    return () => document.removeEventListener('pointerdown', closeShopMenuOnOutsideClick)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadCartCount() {
+      const requestVersion = ++cartLoadVersionRef.current
+      try {
+        const items = await getAllCartItems(getCartSessionId())
+        if (cancelled || requestVersion !== cartLoadVersionRef.current) return
+        const count = items.reduce((total, item) => {
+          const quantity = Number(item?.quantity ?? item?.Quantity ?? 1)
+          return total + (Number.isFinite(quantity) && quantity > 0 ? quantity : 0)
+        }, 0)
+        setCartCount(count)
+      } catch (error) {
+        if (!cancelled && requestVersion === cartLoadVersionRef.current) {
+          console.error('Failed to load cart count.', error)
+        }
+      }
+    }
+
+    loadCartCount()
+    window.addEventListener(CART_UPDATED_EVENT, loadCartCount)
+    return () => {
+      cancelled = true
+      window.removeEventListener(CART_UPDATED_EVENT, loadCartCount)
+    }
+  }, [location.pathname])
 
   useEffect(() => {
     const name = searchTerm.trim()
@@ -106,8 +155,66 @@ export default function StoreLayout() {
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium tracking-widest uppercase text-[#544F4B]">
             <NavLink to="/" end className={({ isActive }) => `border-b-2 pb-1 transition-colors ${isActive ? 'border-[#A37E58] text-[#A37E58]' : 'border-transparent hover:text-[#A37E58]'}`}>Home</NavLink>
-            <NavLink to="/store/products" className={({ isActive }) => `border-b-2 pb-1 transition-colors ${isActive ? 'border-[#A37E58] text-[#A37E58]' : 'border-transparent hover:text-[#A37E58]'}`}>Shop</NavLink>
-            <NavLink to="/store/collections" className={({ isActive }) => `border-b-2 pb-1 transition-colors ${isActive ? 'border-[#A37E58] text-[#A37E58]' : 'border-transparent hover:text-[#A37E58]'}`}>Collections</NavLink>
+            <div
+              ref={shopMenuRef}
+              className="relative"
+              onMouseEnter={() => setShopMenuOpen(true)}
+              onMouseLeave={() => setShopMenuOpen(false)}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) {
+                  setShopMenuOpen(false)
+                }
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') setShopMenuOpen(false)
+              }}
+            >
+              <button
+                type="button"
+                aria-expanded={shopMenuOpen}
+                aria-controls="store-shop-mega-menu"
+                onClick={() => setShopMenuOpen(true)}
+                className={`inline-flex items-center gap-1 border-b-2 pb-1 transition-colors ${isShopSection ? 'border-[#A37E58] text-[#A37E58]' : 'border-transparent hover:text-[#A37E58]'}`}
+              >
+                Shop
+                <svg className={`h-3 w-3 transition-transform ${shopMenuOpen ? 'rotate-180' : ''}`} viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <path d="m2 4 4 4 4-4" stroke="currentColor" strokeWidth="1.5" />
+                </svg>
+              </button>
+              {shopMenuOpen && (
+                <div
+                  id="store-shop-mega-menu"
+                  className="absolute left-1/2 top-full z-[60] w-[min(90vw,640px)] -translate-x-1/2 pt-3"
+                >
+                  <div className="grid grid-cols-3 gap-3 rounded-lg border border-[#EAE6E2] bg-white p-4 text-left normal-case tracking-normal shadow-xl">
+                    <NavLink
+                      to="/store/products"
+                      onClick={() => setShopMenuOpen(false)}
+                      className="rounded-md p-4 transition-colors hover:bg-[#F8F5F1] hover:text-[#A37E58]"
+                    >
+                      <span className="block font-medium">All Jewellery</span>
+                      <span className="mt-1 block text-xs font-normal text-[#827B72]">Explore our entire jewellery collection</span>
+                    </NavLink>
+                    <NavLink
+                      to="/store/collections"
+                      onClick={() => setShopMenuOpen(false)}
+                      className="rounded-md p-4 transition-colors hover:bg-[#F8F5F1] hover:text-[#A37E58]"
+                    >
+                      <span className="block font-medium">Collections</span>
+                      <span className="mt-1 block text-xs font-normal text-[#827B72]">Discover jewellery for every occasion</span>
+                    </NavLink>
+                    <NavLink
+                      to="/store/offers"
+                      onClick={() => setShopMenuOpen(false)}
+                      className="rounded-md p-4 transition-colors hover:bg-[#F8F5F1] hover:text-[#A37E58]"
+                    >
+                      <span className="block font-medium">Special Offers</span>
+                      <span className="mt-1 block text-xs font-normal text-[#827B72]">Explore exclusive deals and savings</span>
+                    </NavLink>
+                  </div>
+                </div>
+              )}
+            </div>
             <NavLink to="/about" className={({ isActive }) => `border-b-2 pb-1 transition-colors ${isActive ? 'border-[#A37E58] text-[#A37E58]' : 'border-transparent hover:text-[#A37E58]'}`}>About</NavLink>
             <NavLink to="/contact" className={({ isActive }) => `border-b-2 pb-1 transition-colors ${isActive ? 'border-[#A37E58] text-[#A37E58]' : 'border-transparent hover:text-[#A37E58]'}`}>Contact</NavLink>
           </nav>
@@ -175,11 +282,19 @@ export default function StoreLayout() {
             </div>
             <Link to={accountPath} aria-label="Profile"><svg className="w-6 h-6 stroke-current" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></Link>
             <Link to="/manage-profile/wishlist" aria-label="Wishlist"><svg className="w-6 h-6 stroke-current" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg></Link>
-            <Link to="/store/cart" aria-label="Cart" className="relative"><svg className="w-6 h-6 stroke-current" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-              <span className="absolute -top-1 -right-1 bg-[#A37E58] text-[#FDFCFB] text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">0</span>
+            <Link to="/store/cart" aria-label={`Cart, ${cartCount} ${cartCount === 1 ? 'item' : 'items'}`} className="relative"><svg className="w-6 h-6 stroke-current" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+              <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-[#A37E58] text-[#FDFCFB] text-[9px] rounded-full flex items-center justify-center font-bold">{cartCount}</span>
             </Link>
 
-            <button onClick={() => setMobileOpen(o => !o)} className="md:hidden">
+            <button
+              aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={mobileOpen}
+              onClick={() => {
+                setMobileOpen((open) => !open)
+                setMobileShopOpen(false)
+              }}
+              className="md:hidden"
+            >
               <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
           </div>
@@ -189,8 +304,34 @@ export default function StoreLayout() {
         <div className={`${mobileOpen ? 'block' : 'hidden'} md:hidden border-t border-[#EAE6E2] bg-[#FDFCFB]`}> 
           <div className="px-6 py-4 flex flex-col gap-3 text-sm">
             <NavLink to="/" end onClick={() => setMobileOpen(false)} className={({ isActive }) => isActive ? 'font-medium text-[#A37E58]' : 'text-[#544F4B]'}>Home</NavLink>
-            <NavLink to="/store/products" onClick={() => setMobileOpen(false)} className={({ isActive }) => isActive ? 'font-medium text-[#A37E58]' : 'text-[#544F4B]'}>Shop</NavLink>
-            <NavLink to="/store/collections" onClick={() => setMobileOpen(false)} className={({ isActive }) => isActive ? 'font-medium text-[#A37E58]' : 'text-[#544F4B]'}>Collections</NavLink>
+            <button
+              type="button"
+              aria-expanded={mobileShopOpen}
+              aria-controls="store-mobile-shop-menu"
+              onClick={() => setMobileShopOpen((open) => !open)}
+              className="flex items-center justify-between text-left text-[#544F4B]"
+            >
+              Shop
+              <svg className={`h-3 w-3 transition-transform ${mobileShopOpen ? 'rotate-180' : ''}`} viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                <path d="m2 4 4 4 4-4" stroke="currentColor" strokeWidth="1.5" />
+              </svg>
+            </button>
+            {mobileShopOpen && (
+              <div id="store-mobile-shop-menu" className="ml-3 flex flex-col gap-3 border-l border-[#EAE6E2] pl-4">
+                <NavLink to="/store/products" onClick={() => { setMobileOpen(false); setMobileShopOpen(false) }} className={({ isActive }) => `block ${isActive ? 'font-medium text-[#A37E58]' : 'text-[#544F4B]'}`}>
+                  <span className="block">All Jewelry</span>
+                  <span className="mt-1 block text-xs text-[#827B72]">Explore our entire jewelry collection</span>
+                </NavLink>
+                <NavLink to="/store/collections" onClick={() => { setMobileOpen(false); setMobileShopOpen(false) }} className={({ isActive }) => `block ${isActive ? 'font-medium text-[#A37E58]' : 'text-[#544F4B]'}`}>
+                  <span className="block">Collections</span>
+                  <span className="mt-1 block text-xs text-[#827B72]">Discover jewelry for every occasion</span>
+                </NavLink>
+                <NavLink to="/store/offers" onClick={() => { setMobileOpen(false); setMobileShopOpen(false) }} className={({ isActive }) => `block ${isActive ? 'font-medium text-[#A37E58]' : 'text-[#544F4B]'}`}>
+                  <span className="block">Special Offers</span>
+                  <span className="mt-1 block text-xs text-[#827B72]">Explore exclusive deals and savings</span>
+                </NavLink>
+              </div>
+            )}
             <NavLink to="/about" onClick={() => setMobileOpen(false)} className={({ isActive }) => isActive ? 'font-medium text-[#A37E58]' : 'text-[#544F4B]'}>About Us</NavLink>
             <NavLink to="/contact" onClick={() => setMobileOpen(false)} className={({ isActive }) => isActive ? 'font-medium text-[#A37E58]' : 'text-[#544F4B]'}>Contact</NavLink>
           </div>
@@ -210,14 +351,14 @@ export default function StoreLayout() {
             <h5 className="font-semibold mb-2">Quick Links</h5>
             <ul className="text-sm text-white/70 space-y-1">
               <li><Link to="/" className="hover:text-white">Home</Link></li>
-              <li><Link to="/store/products" className="hover:text-white">Shop All Jewellery</Link></li>
+              <li><Link to="/store/products" className="hover:text-white">All Jewellery</Link></li>
               <li><Link to="/store/collections" className="hover:text-white">Collections</Link></li>
+              <li><Link to="/store/offers" className="hover:text-white">Special Offers</Link></li>
             </ul>
           </div>
           <div>
             <h5 className="font-semibold mb-2">Customer Care</h5>
             <ul className="text-sm text-white/70 space-y-1">
-              <li><a href="/faqs" className="hover:text-white">FAQs</a></li>
               <li><Link to="/shipping-policy" className="hover:text-white">Shipping Policy</Link></li>
               <li><a href="/returns" className="hover:text-white">Return & Refund</a></li>
             </ul>

@@ -241,6 +241,14 @@ export default function OfferDetails() {
                   <input type="number" step="0.01" value={offer.discountValue} onChange={(e) => setOffer((p) => ({ ...p, discountValue: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" />
                 </FormField>
 
+                <FormField label="Minimum Order Amount">
+                  <input type="number" step="0.01" value={offer.minimumOrderAmount ?? ''} onChange={(e) => setOffer((p) => ({ ...p, minimumOrderAmount: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" />
+                </FormField>
+
+                <FormField label="Maximum Discount Amount">
+                  <input type="number" step="0.01" value={offer.maximumDiscountAmount ?? ''} onChange={(e) => setOffer((p) => ({ ...p, maximumDiscountAmount: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" />
+                </FormField>
+
                 <FormField label="Start Date">
                   <input type="datetime-local" value={offer.startDate} onChange={(e) => setOffer((p) => ({ ...p, startDate: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" />
                 </FormField>

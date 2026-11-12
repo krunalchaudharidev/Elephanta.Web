@@ -16,6 +16,7 @@ export default function CustomerSupportRequests() {
   const [items, setItems] = useState([])
   const [pageNumber, setPageNumber] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [status, setStatus] = useState('All')
   const [totalCount, setTotalCount] = useState(0)
   const [error, setError] = useState('')
   const [selectedRequestId, setSelectedRequestId] = useState(null)
@@ -28,7 +29,11 @@ export default function CustomerSupportRequests() {
       setLoading(true)
       setError('')
       try {
-        const response = await getCustomerSupportRequests(pageNumber, pageSize)
+        const response = await getCustomerSupportRequests(
+          pageNumber,
+          pageSize,
+          status === 'All' ? null : status
+        )
         if (cancelled) return
         setItems(response?.items ?? response?.Items ?? [])
         setTotalCount(response?.totalCount ?? response?.TotalCount ?? 0)
@@ -48,7 +53,7 @@ export default function CustomerSupportRequests() {
       cancelled = true
       setLoading(false)
     }
-  }, [pageNumber, pageSize, setLoading])
+  }, [pageNumber, pageSize, status, setLoading])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const firstPage = Math.max(1, Math.min(pageNumber - 2, totalPages - 4))
@@ -76,6 +81,23 @@ export default function CustomerSupportRequests() {
           Error: {error}
         </div>
       )}
+
+      <div className="mb-4 flex items-center gap-2">
+        <label htmlFor="support-status" className="text-sm text-gray-500">Status</label>
+        <select
+          id="support-status"
+          value={status}
+          onChange={(event) => {
+            setStatus(event.target.value)
+            setPageNumber(1)
+          }}
+          className="rounded border bg-white px-2 py-1 text-sm"
+        >
+          <option value="All">All</option>
+          <option value="Pending">Pending</option>
+          <option value="Resolved">Resolved</option>
+        </select>
+      </div>
 
       <div className="overflow-x-auto rounded-lg bg-white shadow">
         <table className="min-w-full divide-y divide-gray-200">
