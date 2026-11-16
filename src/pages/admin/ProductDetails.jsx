@@ -195,6 +195,7 @@ const ProductDetails = () => {
     reservedQuantity: 0,
     weight: 0,
     isFeatured: false,
+    useCommonFaqs: false,
     metaTitle: "",
     metaDescription: "",
     keywords: "",
@@ -316,6 +317,7 @@ const ProductDetails = () => {
           reservedQuantity: res?.reservedQuantity ?? res?.ReservedQuantity ?? 0,
           soldQuantity: res?.soldQuantity ?? res?.SoldQuantity ?? 0,
           isFeatured: res?.isFeatured ?? res?.IsFeatured ?? false,
+          useCommonFaqs: res?.useCommonFaqs ?? res?.UseCommonFaqs ?? false,
           // keep category name for display
           category: res?.categoryName ?? res?.CategoryName ?? '',
         }
@@ -515,6 +517,15 @@ const ProductDetails = () => {
       return
     }
 
+    if (product.useCommonFaqs) {
+      try {
+        await apiUpdateProduct(id, { UseCommonFaqs: true })
+      } catch (e) {
+        alert(e?.message || 'Failed to save FAQ settings')
+      }
+      return
+    }
+
     // validate required fields (question + answer)
     const invalid = faqs.find((f) => !(String(f.question || '').trim() && String(f.answer || '').trim()))
     if (invalid) {
@@ -523,6 +534,8 @@ const ProductDetails = () => {
     }
 
     try {
+      await apiUpdateProduct(id, { UseCommonFaqs: false })
+
       // perform deletions
       if (deletedFaqIds && deletedFaqIds.length) {
         await Promise.all(deletedFaqIds.map((fid) => deleteProductFaq(fid).catch((e) => console.error('delete faq failed', e))))
@@ -991,22 +1004,53 @@ const ProductDetails = () => {
 
                       <div>
 
-                        <h2 className="font-semibold text-slate-900">Product FAQs</h2>
-
-                        <p className="mt-1 text-sm text-slate-500">Manage frequently asked questions for this product.</p>
+                        {product.useCommonFaqs ? (
+                          <p className="text-sm text-slate-500">
+                            Common FAQs are enabled. Product-specific FAQs are hidden.
+                          </p>
+                        ) : (
+                          <>
+                            <h2 className="font-semibold text-slate-900">Product FAQs</h2>
+                            <p className="mt-1 text-sm text-slate-500">Manage frequently asked questions for this product.</p>
+                          </>
+                        )}
 
                       </div>
 
-                      <button onClick={addFaq} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
+                      <div className="flex flex-wrap items-center gap-4">
+                        <label className="flex items-center gap-2 text-sm text-slate-700">
+                          <input
+                            type="checkbox"
+                            name="UseCommonFaqs"
+                            checked={Boolean(product.useCommonFaqs)}
+                            onChange={(e) => updateProduct("useCommonFaqs", e.target.checked)}
+                            className="h-4 w-4 accent-blue-600"
+                          />
+                          Use Common FAQs
+                        </label>
 
-                        <Plus className="h-4 w-4" />
+                        {!product.useCommonFaqs && (
+                          <button onClick={addFaq} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
 
-                        Add FAQ
+                            <Plus className="h-4 w-4" />
 
-                      </button>
+                            Add FAQ
+
+                          </button>
+                        )}
+                      </div>
 
                     </div>
 
+                    {product.useCommonFaqs ? (
+                      <div className="flex justify-end border-t border-slate-200 p-5">
+                        <button type="button" onClick={handleSaveFaqs} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
+                          <Save className="h-4 w-4" />
+                          Save Changes
+                        </button>
+                      </div>
+                    ) : (
+                      <>
 
                     {/* FAQ List */}
 
@@ -1111,6 +1155,8 @@ const ProductDetails = () => {
                         Save Changes
                       </button>
                     </div>
+                      </>
+                    )}
 
                   </div>
 

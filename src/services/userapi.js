@@ -1,6 +1,28 @@
-import { customerApiGet, fetchWithCustomerAuth } from './api'
+import { adminApiGet, customerApiGet, fetchWithCustomerAuth } from './api'
 
 const USER_ADDRESSES_ENDPOINT = '/api/User/addresses'
+const USERS_ENDPOINT = '/api/User/users'
+
+export async function getUsers({
+  pageNumber = 1,
+  pageSize = 10,
+  name,
+  email,
+  phoneNumber,
+  sortOrder = 'asc',
+} = {}) {
+  const query = new URLSearchParams({
+    pageNumber: String(pageNumber),
+    pageSize: String(pageSize),
+    sortOrder: String(sortOrder ?? 'asc'),
+  })
+  for (const [key, value] of Object.entries({ name, email, phoneNumber })) {
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      query.set(key, String(value).trim())
+    }
+  }
+  return adminApiGet(`${USERS_ENDPOINT}?${query.toString()}`)
+}
 
 export async function getUserProfile() {
   return customerApiGet('/api/User/me')

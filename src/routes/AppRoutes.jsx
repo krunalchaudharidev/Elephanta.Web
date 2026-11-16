@@ -11,6 +11,8 @@ import ProductDetails from '../pages/admin/ProductDetails'
 import AdminOffers from '../pages/admin/Offers'
 import OfferDetails from '../pages/admin/OfferDetails'
 import WebsiteSettings from '../pages/admin/WebsiteSettings'
+import AdminCommonFaqs from '../pages/admin/CommonFaqs'
+import AdminCustomers from '../pages/admin/Customers'
 import StoreLogin from '../pages/store/Login'
 import StoreRegister from '../pages/store/Register'
 import ManageProfile from '../pages/store/ManageProfile'
@@ -131,6 +133,8 @@ export default function AppRoutes() {
           <Route path="offers/:id" element={<OfferDetails />} />
           <Route path="account-settings" element={<AccountSettings />} />
           <Route path="website-settings" element={<WebsiteSettings />} />
+          <Route path="common-faqs" element={<AdminCommonFaqs />} />
+          <Route path="customers" element={<AdminCustomers />} />
         </Route>
 
         <Route path="*" element={<div style={{padding:20}}>Not found</div>} />

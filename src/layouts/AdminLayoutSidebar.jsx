@@ -4,11 +4,11 @@ const items = [
   ['/admin/dashboard', 'Dashboard', 'M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z'],
   ['/admin/categories', 'Categories', 'M4 6h16M4 12h16M4 18h16'],
   ['/admin/products', 'Products', 'M3 7h18M6 21h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'],
+  ['/admin/common-faqs', 'Common FAQs', 'M4 5h16v11H8l-4 4V5zm4 4h8m-8 4h5'],
   ['/admin/offers', 'Offers / Coupons', 'M12 2l3 7h7l-5.7 4.1L20 22 12 17.5 4 22l2.7-8.9L1 9h7z'],
   ['/admin/orders', 'Orders', 'M3 7h18M6 7v14a2 2 0 002 2h8a2 2 0 002-2V7'],
-  ['/admin/customer-support', 'Customer Support', 'M21 11.5a8.5 8.5 0 01-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1121 11.5z'],
   ['/admin/customers', 'Customers', 'M12 12a5 5 0 100-10 5 5 0 000 10zm-9 9a9 9 0 0118 0'],
-  ['/admin/reports', 'Reports', 'M3 3v18h18'],
+  ['/admin/customer-support', 'Customer Support', 'M21 11.5a8.5 8.5 0 01-12.2 7.6L3 21l1.9-5.8A8.5 8.5 0 1121 11.5z'],
   ['/admin/website-settings', 'Website Settings', 'M12 8a4 4 0 100 8 4 4 0 000-8zm0-6v2m0 16v2m10-10h-2M4 12H2m17.07-7.07-1.41 1.41M6.34 17.66l-1.41 1.41m14.14 0-1.41-1.41M6.34 6.34 4.93 4.93'],
   
 ]

@@ -254,6 +254,7 @@ export default function Cart() {
   const subtotal = cartSummary?.subtotal ?? 0
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0)
   const shipping = cartSummary?.shippingCharges ?? 0
+  const hasUnlockedFreeShipping = subtotal >= freeShippingThreshold
   const discount = cartSummary?.couponDiscount ?? 0
   const giftWrapPrice = giftWrap && items.length > 0 ? 99 : 0
   const total = (cartSummary?.finalPayableAmount ?? 0) + giftWrapPrice
@@ -596,7 +597,7 @@ export default function Cart() {
                 <Truck size={19} className="mt-0.5 shrink-0 text-[#a77b4c]" />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium">
-                    {shipping === 0
+                    {hasUnlockedFreeShipping
                       ? "You've unlocked free shipping!"
                       : `Add ${formatPrice(freeShippingThreshold - subtotal)} more for free shipping.`}
                   </p>

@@ -8,6 +8,7 @@ import {
   getProduct,
   getProductFaqs,
 } from "../../services/productapi";
+import { getCommonFaqs } from "../../services/commonfaqsapi";
 import {
   addToWishlist,
   getWishlist,
@@ -200,14 +201,16 @@ export default function ProductDetails() {
   }, []);
 
   useEffect(() => {
-    if (!id) return undefined;
+    if (!id || !product?.id || String(product.id) !== String(id)) return undefined;
     let cancelled = false;
 
     async function loadFaqs() {
       setFaqsLoading(true);
       setFaqsError("");
       try {
-        const response = await getProductFaqs(id);
+        const response = product.useCommonFaqs
+          ? await getCommonFaqs()
+          : await getProductFaqs(id);
         const items = Array.isArray(response)
           ? response
           : response?.items ?? response?.Items ?? [];
@@ -238,7 +241,7 @@ export default function ProductDetails() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, product?.id, product?.useCommonFaqs]);
 
   useEffect(() => {
     let cancelled = false;
@@ -284,6 +287,7 @@ export default function ProductDetails() {
             reservedQuantity: Number.isFinite(reservedQuantity) ? reservedQuantity : 0,
             isActive: response?.isActive ?? response?.IsActive ?? false,
             isFeatured: response?.isFeatured ?? response?.IsFeatured ?? false,
+            useCommonFaqs: response?.useCommonFaqs ?? response?.UseCommonFaqs ?? false,
             isCategoryActive: response?.isCategoryActive ?? response?.IsCategoryActive ?? false,
             reviewCount: Number.isFinite(reviewCount) ? reviewCount : 0,
             rating: response?.averageRating ?? response?.AverageRating ?? 0,
