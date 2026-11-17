@@ -25,6 +25,47 @@ function getApiErrorMessage(body) {
   return null
 }
 
+function getSummaryAmount(summary, camelCaseName, pascalCaseName) {
+  const value = Number(summary?.[camelCaseName] ?? summary?.[pascalCaseName])
+  if (!Number.isFinite(value)) {
+    throw new Error(`Cart summary response has an invalid ${pascalCaseName}.`)
+  }
+  return value
+}
+
+export function normalizeCartSummary(summary) {
+  if (!summary || typeof summary !== 'object') {
+    throw new Error('Cart summary response is invalid.')
+  }
+
+  const couponCode = summary.couponCode ?? summary.CouponCode ?? ''
+  const couponError = summary.couponError ?? summary.CouponError ?? ''
+  const responseCouponValid = summary.couponValid ?? summary.CouponValid
+  if (
+    responseCouponValid !== undefined &&
+    responseCouponValid !== null &&
+    typeof responseCouponValid !== 'boolean'
+  ) {
+    throw new Error('Cart summary response has an invalid CouponValid.')
+  }
+  const couponValid =
+    responseCouponValid ?? Boolean(couponCode && !couponError)
+
+  return {
+    subtotal: getSummaryAmount(summary, 'subtotal', 'Subtotal'),
+    couponCode,
+    couponValid,
+    couponError,
+    couponDiscount: getSummaryAmount(summary, 'couponDiscount', 'CouponDiscount'),
+    shippingCharges: getSummaryAmount(summary, 'shippingCharges', 'ShippingCharges'),
+    finalPayableAmount: getSummaryAmount(
+      summary,
+      'finalPayableAmount',
+      'FinalPayableAmount'
+    ),
+  }
+}
+
 function normalizeCartApiError(error) {
   const body = error?.body
   const message =

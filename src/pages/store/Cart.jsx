@@ -4,6 +4,7 @@ import {
   ArrowRight,
   ChevronRight,
   Heart,
+  LogIn,
   Minus,
   Plus,
   ShieldCheck,
@@ -11,9 +12,10 @@ import {
   Tag,
   Trash2,
   Truck,
+  UserRound,
   X,
 } from 'lucide-react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import RemoteImage from '../../components/store/RemoteImage'
 import {
   applyCartCoupon,
@@ -21,6 +23,7 @@ import {
   getAllCartItems,
   getCartSessionId,
   getCartSummary,
+  normalizeCartSummary,
   removeCartCoupon,
   updateCartItem,
 } from '../../services/cartapi'
@@ -87,49 +90,9 @@ const formatPrice = (price) => new Intl.NumberFormat('en-IN', {
   maximumFractionDigits: 0,
 }).format(price)
 
-function getSummaryAmount(summary, camelCaseName, pascalCaseName) {
-  const value = Number(summary?.[camelCaseName] ?? summary?.[pascalCaseName])
-  if (!Number.isFinite(value)) {
-    throw new Error(`Cart summary response has an invalid ${pascalCaseName}.`)
-  }
-  return value
-}
-
-function normalizeCartSummary(summary) {
-  if (!summary || typeof summary !== 'object') {
-    throw new Error('Cart summary response is invalid.')
-  }
-
-  const couponCode = summary.couponCode ?? summary.CouponCode ?? ''
-  const couponError = summary.couponError ?? summary.CouponError ?? ''
-  const responseCouponValid = summary.couponValid ?? summary.CouponValid
-  if (
-    responseCouponValid !== undefined &&
-    responseCouponValid !== null &&
-    typeof responseCouponValid !== 'boolean'
-  ) {
-    throw new Error('Cart summary response has an invalid CouponValid.')
-  }
-  const couponValid =
-    responseCouponValid ?? Boolean(couponCode && !couponError)
-
-  return {
-    subtotal: getSummaryAmount(summary, 'subtotal', 'Subtotal'),
-    couponCode,
-    couponValid,
-    couponError,
-    couponDiscount: getSummaryAmount(summary, 'couponDiscount', 'CouponDiscount'),
-    shippingCharges: getSummaryAmount(summary, 'shippingCharges', 'ShippingCharges'),
-    finalPayableAmount: getSummaryAmount(
-      summary,
-      'finalPayableAmount',
-      'FinalPayableAmount'
-    ),
-  }
-}
-
 export default function Cart() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [items, setItems] = useState([])
   const [cartSummary, setCartSummary] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -141,6 +104,7 @@ export default function Cart() {
   const [wishlistSavingIds, setWishlistSavingIds] = useState([])
   const wishlistSavingIdsRef = useRef(new Set())
   const [guestSaveItem, setGuestSaveItem] = useState(null)
+  const [checkoutAuthPrompt, setCheckoutAuthPrompt] = useState(false)
   const [coupon, setCoupon] = useState(() => location.state?.appliedCoupon ?? '')
   const [appliedCoupon, setAppliedCoupon] = useState(() => location.state?.appliedCoupon ?? '')
   const [couponMessage, setCouponMessage] = useState('')
@@ -376,6 +340,34 @@ export default function Cart() {
     if (guestSaveItem && await removeItem(guestSaveItem.id)) {
       setGuestSaveItem(null)
     }
+  }
+
+  function getCheckoutState() {
+    return { items, appliedCoupon, giftWrap }
+  }
+
+  function handleProceedToCheckout() {
+    const checkoutState = getCheckoutState()
+    if (loadCustomerAuth()?.accessToken) {
+      navigate('/store/checkout', { state: checkoutState })
+      return
+    }
+
+    setCheckoutAuthPrompt(true)
+  }
+
+  function handleCheckoutLogin() {
+    navigate('/login', {
+      state: {
+        from: '/store/checkout',
+        checkoutState: getCheckoutState(),
+      },
+    })
+  }
+
+  function handleGuestCheckout() {
+    navigate('/store/checkout', { state: getCheckoutState() })
+    setCheckoutAuthPrompt(false)
   }
 
   async function applyCoupon(event) {
@@ -744,14 +736,14 @@ export default function Cart() {
               </div>
               <p className="mt-2 text-right text-[10px] text-[#92887e]">Taxes included where applicable.</p>
 
-              <Link
-                to="/store/checkout"
-                state={{ items, appliedCoupon, giftWrap }}
+              <button
+                type="button"
+                onClick={handleProceedToCheckout}
                 className="mt-6 flex w-full items-center justify-center gap-3 rounded-md bg-[#142a23] px-5 py-4 text-xs font-medium text-white transition hover:bg-[#a77b4c]"
               >
                 Proceed to Checkout
                 <ArrowRight size={16} />
-              </Link>
+              </button>
               <div className="mt-5 flex items-center justify-center gap-2 text-[10px] text-[#827b72]">
                 <ShieldCheck size={15} className="text-[#a77b4c]" />
                 Secure and protected checkout
@@ -809,6 +801,77 @@ export default function Cart() {
                   className="min-h-11 rounded-md border border-[#e5dcd1] px-4 py-3 text-xs font-medium text-[#5f574e] transition hover:bg-[#f8f5f1] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Remove from cart
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {checkoutAuthPrompt && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-[#142a23]/55 px-4 py-6 backdrop-blur-sm"
+            onClick={() => setCheckoutAuthPrompt(false)}
+          >
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="checkout-auth-dialog-title"
+              className="w-full max-w-2xl overflow-hidden rounded-2xl border border-white/70 bg-[#fffdfa] p-6 shadow-[0_24px_80px_rgba(20,42,35,0.24)] sm:p-8"
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') setCheckoutAuthPrompt(false)
+              }}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="mb-3 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#a77b4c]">
+                    <ShieldCheck size={14} />
+                    Secure checkout
+                  </div>
+                  <h2 id="checkout-auth-dialog-title" className="font-serif text-2xl text-[#183129] sm:text-3xl">
+                    Continue to checkout
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-[#827b72] sm:text-base">
+                    Choose how you would like to continue.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close dialog"
+                  onClick={() => setCheckoutAuthPrompt(false)}
+                  className="shrink-0 rounded-full p-2 text-[#827b72] transition hover:bg-[#f2eee7] hover:text-[#183129] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a77b4c]"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="mt-7 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={handleCheckoutLogin}
+                  className="group flex min-h-28 items-center gap-4 rounded-xl border border-[#e5dcd1] bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[#b89569] hover:shadow-[0_10px_28px_rgba(48,37,22,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a77b4c] sm:p-5"
+                >
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#f5eee5] text-[#956c3e] transition group-hover:bg-[#a77b4c] group-hover:text-white">
+                    <LogIn size={20} strokeWidth={1.7} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-[#183129] sm:text-base">Login</span>
+                    <span className="mt-1 block text-xs leading-5 text-[#827b72] sm:text-sm">Registered customer</span>
+                  </span>
+                  <ChevronRight size={18} className="shrink-0 text-[#b8ada0] transition group-hover:translate-x-0.5 group-hover:text-[#956c3e]" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGuestCheckout}
+                  className="group flex min-h-28 items-center gap-4 rounded-xl border border-[#e5dcd1] bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[#b89569] hover:shadow-[0_10px_28px_rgba(48,37,22,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a77b4c] sm:p-5"
+                >
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#f5eee5] text-[#956c3e] transition group-hover:bg-[#a77b4c] group-hover:text-white">
+                    <UserRound size={20} strokeWidth={1.7} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold text-[#183129] sm:text-base">Continue as Guest</span>
+                    <span className="mt-1 block text-xs leading-5 text-[#827b72] sm:text-sm">No account required</span>
+                  </span>
+                  <ChevronRight size={18} className="shrink-0 text-[#b8ada0] transition group-hover:translate-x-0.5 group-hover:text-[#956c3e]" />
                 </button>
               </div>
             </section>

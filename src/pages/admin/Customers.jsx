@@ -93,6 +93,11 @@ export default function AdminCustomers() {
   }
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  const firstPage = Math.max(1, Math.min(pageNumber - 2, totalPages - 4))
+  const visiblePages = Array.from(
+    { length: Math.min(totalPages, 5) },
+    (_, index) => firstPage + index
+  )
 
   return (
     <div className="w-full">
@@ -199,43 +204,54 @@ export default function AdminCustomers() {
         </table>
       </div>
 
-      <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
-          <span>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-gray-600">
             Showing page {pageNumber} of {totalPages} — {totalCount} customers
-          </span>
-          <label className="flex items-center gap-2 text-gray-500">
-            Per page
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="customers-page-size" className="text-sm text-gray-500">Per page</label>
             <select
+              id="customers-page-size"
               value={pageSize}
               onChange={(event) => {
                 setPageSize(Number(event.target.value))
                 setPageNumber(1)
               }}
               className="rounded border bg-white px-2 py-1 text-sm"
-              aria-label="Customers per page"
             >
               {[10, 20, 30, 50, 100].map((size) => (
                 <option key={size} value={size}>{size}</option>
               ))}
             </select>
-          </label>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setPageNumber((current) => Math.max(1, current - 1))}
-            disabled={pageNumber <= 1 || loading}
+            onClick={() => setPageNumber((page) => Math.max(1, page - 1))}
+            disabled={pageNumber <= 1}
             className="rounded border bg-white px-3 py-1 disabled:opacity-50"
           >
             Prev
           </button>
-          <span className="px-2 text-sm text-gray-600">{pageNumber} / {totalPages}</span>
+          <div className="hidden items-center gap-1 sm:flex">
+            {visiblePages.map((page) => (
+              <button
+                key={page}
+                type="button"
+                onClick={() => setPageNumber(page)}
+                className={`rounded px-3 py-1 ${page === pageNumber ? 'bg-indigo-600 text-white' : 'border bg-white'}`}
+              >
+                {page}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
-            onClick={() => setPageNumber((current) => Math.min(totalPages, current + 1))}
-            disabled={pageNumber >= totalPages || loading}
+            onClick={() => setPageNumber((page) => Math.min(totalPages, page + 1))}
+            disabled={pageNumber >= totalPages}
             className="rounded border bg-white px-3 py-1 disabled:opacity-50"
           >
             Next

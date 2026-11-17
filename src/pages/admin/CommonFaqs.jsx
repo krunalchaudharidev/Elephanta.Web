@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import PageHeader from '../../components/admin/shared/PageHeader'
 import DeleteConfirm from '../../components/admin/shared/DeleteConfirm'
 import CommonFaqModal from '../../components/admin/modal/CommonFaqModal'
@@ -176,7 +176,10 @@ export default function AdminCommonFaqs() {
                         aria-label={`Edit FAQ: ${faq.question ?? faq.Question ?? ''}`}
                         title="Edit"
                       >
-                        <Pencil className="h-5 w-5 text-yellow-600" />
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-600" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                          <path fillRule="evenodd" d="M4 13V16h3l8.293-8.293-3-3L4 13z" clipRule="evenodd" />
+                        </svg>
                       </button>
                       <button
                         type="button"
@@ -185,7 +188,9 @@ export default function AdminCommonFaqs() {
                         aria-label={`Delete FAQ: ${faq.question ?? faq.Question ?? ''}`}
                         title="Delete"
                       >
-                        <Trash2 className="h-5 w-5 text-red-600" />
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-600" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H3a1 1 0 100 2h1v9a2 2 0 002 2h6a2 2 0 002-2V6h1a1 1 0 100-2h-2V3a1 1 0 00-1-1H6zm3 5a1 1 0 012 0v7a1 1 0 11-2 0V7z" clipRule="evenodd" />
+                        </svg>
                       </button>
                     </div>
                   </td>

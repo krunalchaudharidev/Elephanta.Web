@@ -36,6 +36,7 @@ export default function OfferDetails() {
     startDate: '',
     endDate: '',
     usageLimit: '',
+    usageLimitPerCustomer: '',
     isActive: true,
   })
 
@@ -79,6 +80,7 @@ export default function OfferDetails() {
           startDate: toDateTimeLocalIST(res?.startDate ?? res?.StartDate ?? null),
           endDate: toDateTimeLocalIST(res?.endDate ?? res?.EndDate ?? null),
           usageLimit: res?.usageLimit ?? res?.UsageLimit ?? null,
+          usageLimitPerCustomer: res?.usageLimitPerCustomer ?? res?.UsageLimitPerCustomer ?? null,
           usageCount: res?.usageCount ?? res?.UsageCount ?? 0,
           isActive: Boolean(res?.isActive ?? res?.IsActive ?? true),
         }
@@ -261,6 +263,10 @@ export default function OfferDetails() {
                   <input type="number" value={offer.usageLimit} onChange={(e) => setOffer((p) => ({ ...p, usageLimit: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" />
                 </FormField>
 
+                <FormField label="Usage Limit Per Customer">
+                  <input type="number" value={offer.usageLimitPerCustomer ?? ''} onChange={(e) => setOffer((p) => ({ ...p, usageLimitPerCustomer: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" />
+                </FormField>
+
                 <div className="md:col-span-2 flex items-center gap-4">
                   <ToggleSwitch checked={offer.isActive} onChange={(v) => setOffer((p) => ({ ...p, isActive: v }))} />
                   <span className="text-sm">
@@ -291,6 +297,7 @@ export default function OfferDetails() {
                         startDate: offer.startDate ? dateTimeLocalISTToUTC(offer.startDate) : null,
                         endDate: offer.endDate ? dateTimeLocalISTToUTC(offer.endDate) : null,
                         usageLimit: offer.usageLimit !== '' && offer.usageLimit !== null ? Number(offer.usageLimit) : null,
+                        usageLimitPerCustomer: offer.usageLimitPerCustomer !== '' && offer.usageLimitPerCustomer !== null ? Number(offer.usageLimitPerCustomer) : null,
                         isActive: Boolean(offer.isActive),
                       }
                       await updateOffer(offer.id ?? routeId, payload)
@@ -309,6 +316,7 @@ export default function OfferDetails() {
                           startDate: toDateTimeLocalIST(refreshed?.startDate ?? refreshed?.StartDate ?? null),
                           endDate: toDateTimeLocalIST(refreshed?.endDate ?? refreshed?.EndDate ?? null),
                           usageLimit: refreshed?.usageLimit ?? refreshed?.UsageLimit ?? null,
+                          usageLimitPerCustomer: refreshed?.usageLimitPerCustomer ?? refreshed?.UsageLimitPerCustomer ?? null,
                           usageCount: refreshed?.usageCount ?? refreshed?.UsageCount ?? 0,
                           isActive: Boolean(refreshed?.isActive ?? refreshed?.IsActive ?? true),
                         }

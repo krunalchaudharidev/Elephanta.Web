@@ -17,6 +17,7 @@ export default function CreateOfferModal({ open, onClose, onCreated }) {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [usageLimit, setUsageLimit] = useState('')
+  const [usageLimitPerCustomer, setUsageLimitPerCustomer] = useState('')
   const [isActive, setIsActive] = useState(true)
   const [selectedFiles, setSelectedFiles] = useState([])
 
@@ -35,6 +36,7 @@ export default function CreateOfferModal({ open, onClose, onCreated }) {
     setStartDate('')
     setEndDate('')
     setUsageLimit('')
+    setUsageLimitPerCustomer('')
     setIsActive(true)
     setSelectedFiles([])
     setErrors({})
@@ -91,6 +93,7 @@ export default function CreateOfferModal({ open, onClose, onCreated }) {
         startDate: startDate ? new Date(startDate).toISOString() : null,
         endDate: endDate ? new Date(endDate).toISOString() : null,
         usageLimit: usageLimit === '' ? null : Number(usageLimit),
+        usageLimitPerCustomer: usageLimitPerCustomer === '' ? null : Number(usageLimitPerCustomer),
         isActive: Boolean(isActive),
       }
 
@@ -178,6 +181,11 @@ export default function CreateOfferModal({ open, onClose, onCreated }) {
           <div>
             <label className="block text-sm font-medium text-gray-700">Usage Limit</label>
             <input type="number" value={usageLimit} onChange={(e) => setUsageLimit(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Usage Limit Per Customer</label>
+            <input type="number" value={usageLimitPerCustomer} onChange={(e) => setUsageLimitPerCustomer(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm" />
           </div>
 
           <div className="flex items-center gap-6">

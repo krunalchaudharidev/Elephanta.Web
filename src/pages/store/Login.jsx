@@ -7,7 +7,7 @@ import {
   Mail,
   ShieldCheck,
 } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { login as apiLogin, saveCustomerAuth } from '../../services/authapi'
 
 export default function StoreLogin() {
@@ -17,6 +17,7 @@ export default function StoreLogin() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [form, setForm] = useState({ email: '', password: '' })
+  const location = useLocation()
   const navigate = useNavigate()
 
   function handleChange(event) {
@@ -39,7 +40,14 @@ export default function StoreLogin() {
         expiresAt: body.expiresAt,
         user: body.user,
       })
-      navigate('/', { replace: true })
+      if (location.state?.from === '/store/checkout') {
+        navigate('/store/checkout', {
+          replace: true,
+          state: location.state.checkoutState,
+        })
+      } else {
+        navigate('/manage-profile', { replace: true })
+      }
     } catch (loginError) {
       setError(loginError.message || 'Unable to sign in. Please check your credentials.')
     } finally {
